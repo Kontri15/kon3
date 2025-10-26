@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.parse-task]
 verify_jwt = false
+
+[functions.whoop-oauth-callback]
+verify_jwt = false
+
+[functions.whoop-sync]
+verify_jwt = false
