@@ -1,9 +1,20 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Clock, Calendar, Tag, FileText, CheckCircle2, XCircle } from "lucide-react";
+import { Clock, Calendar, Tag, FileText, CheckCircle2, XCircle, Trash2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TimeBlock {
   id: string;
@@ -21,9 +32,12 @@ interface BlockDetailDialogProps {
   block: TimeBlock | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onDelete: (blockId: string) => void;
 }
 
-export const BlockDetailDialog = ({ block, open, onOpenChange }: BlockDetailDialogProps) => {
+export const BlockDetailDialog = ({ block, open, onOpenChange, onDelete }: BlockDetailDialogProps) => {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
   if (!block) return null;
 
   const formatTime = (isoString: string) => {
@@ -155,22 +169,47 @@ export const BlockDetailDialog = ({ block, open, onOpenChange }: BlockDetailDial
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3 justify-end pt-4 border-t">
+          <div className="flex gap-3 justify-between pt-4 border-t">
             <Button 
-              variant="outline" 
+              variant="destructive" 
               className="gap-2"
+              onClick={() => setShowDeleteDialog(true)}
             >
-              <XCircle className="w-4 h-4" />
-              Mark Not Done
+              <Trash2 className="w-4 h-4" />
+              Delete Block
             </Button>
             <Button 
-              className="gap-2 bg-success hover:bg-success/80"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
             >
-              <CheckCircle2 className="w-4 h-4" />
-              Mark Done
+              Close
             </Button>
           </div>
         </div>
+
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this block?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove "{block.title}" from your schedule.
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  onDelete(block.id);
+                  setShowDeleteDialog(false);
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );

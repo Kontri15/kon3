@@ -23,11 +23,28 @@ interface TimeBlock {
   notes?: string;
 }
 
+interface DragState {
+  blockId: string;
+  startY: number;
+  originalStartAt: string;
+  originalEndAt: string;
+}
+
+interface ResizeState {
+  blockId: string;
+  startY: number;
+  originalEndAt: string;
+  edge: 'top' | 'bottom';
+}
+
 export const TimelineView = () => {
   const [selectedBlock, setSelectedBlock] = useState<TimeBlock | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [actualMinutes, setActualMinutes] = useState<string>("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const [resizeState, setResizeState] = useState<ResizeState | null>(null);
+  const [hoveredBlock, setHoveredBlock] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -315,13 +332,213 @@ export const TimelineView = () => {
     }
   };
 
+  const handleDeleteBlock = async (blockId: string) => {
+    try {
+      const { error } = await supabase
+        .from('blocks')
+        .delete()
+        .eq('id', blockId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Block deleted",
+        description: "The block has been removed from your schedule"
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+      setDialogOpen(false);
+    } catch (error) {
+      console.error('Error deleting block:', error);
+      toast({
+        title: "Failed to delete",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDragStart = (e: React.MouseEvent, block: TimeBlock) => {
+    e.stopPropagation();
+    setDragState({
+      blockId: block.id,
+      startY: e.clientY,
+      originalStartAt: block.start_at,
+      originalEndAt: block.end_at
+    });
+  };
+
+  const handleDragMove = (e: React.MouseEvent) => {
+    if (!dragState) return;
+
+    const deltaY = e.clientY - dragState.startY;
+    const deltaMinutes = Math.round(deltaY / PIXELS_PER_MINUTE);
+
+    if (Math.abs(deltaMinutes) < 1) return;
+
+    const originalStart = parseISO(dragState.originalStartAt);
+    const originalEnd = parseISO(dragState.originalEndAt);
+    
+    const newStart = new Date(originalStart.getTime() + deltaMinutes * 60 * 1000);
+    const newEnd = new Date(originalEnd.getTime() + deltaMinutes * 60 * 1000);
+
+    // Update block optimistically
+    queryClient.setQueryData(['blocks', new Date().toDateString()], (old: TimeBlock[] | undefined) => {
+      if (!old) return old;
+      return old.map(b => 
+        b.id === dragState.blockId 
+          ? { ...b, start_at: newStart.toISOString(), end_at: newEnd.toISOString() }
+          : b
+      );
+    });
+  };
+
+  const handleDragEnd = async () => {
+    if (!dragState) return;
+
+    const block = blocks.find(b => b.id === dragState.blockId);
+    if (!block) return;
+
+    try {
+      const { error } = await supabase
+        .from('blocks')
+        .update({
+          start_at: block.start_at,
+          end_at: block.end_at
+        })
+        .eq('id', block.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Block moved",
+        description: "Schedule updated successfully"
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+    } catch (error) {
+      console.error('Error updating block:', error);
+      toast({
+        title: "Failed to move block",
+        description: "Reverting changes",
+        variant: "destructive"
+      });
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+    } finally {
+      setDragState(null);
+    }
+  };
+
+  const handleResizeStart = (e: React.MouseEvent, block: TimeBlock, edge: 'top' | 'bottom') => {
+    e.stopPropagation();
+    setResizeState({
+      blockId: block.id,
+      startY: e.clientY,
+      originalEndAt: edge === 'bottom' ? block.end_at : block.start_at,
+      edge
+    });
+  };
+
+  const handleResizeMove = (e: React.MouseEvent) => {
+    if (!resizeState) return;
+
+    const deltaY = e.clientY - resizeState.startY;
+    const deltaMinutes = Math.round(deltaY / PIXELS_PER_MINUTE);
+
+    if (Math.abs(deltaMinutes) < 1) return;
+
+    const originalTime = parseISO(resizeState.originalEndAt);
+    const newTime = new Date(originalTime.getTime() + deltaMinutes * 60 * 1000);
+
+    queryClient.setQueryData(['blocks', new Date().toDateString()], (old: TimeBlock[] | undefined) => {
+      if (!old) return old;
+      return old.map(b => {
+        if (b.id === resizeState.blockId) {
+          if (resizeState.edge === 'bottom') {
+            return { ...b, end_at: newTime.toISOString() };
+          } else {
+            return { ...b, start_at: newTime.toISOString() };
+          }
+        }
+        return b;
+      });
+    });
+  };
+
+  const handleResizeEnd = async () => {
+    if (!resizeState) return;
+
+    const block = blocks.find(b => b.id === resizeState.blockId);
+    if (!block) return;
+
+    // Validate minimum duration (5 minutes)
+    const start = parseISO(block.start_at);
+    const end = parseISO(block.end_at);
+    const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+
+    if (durationMinutes < 5) {
+      toast({
+        title: "Invalid duration",
+        description: "Blocks must be at least 5 minutes long",
+        variant: "destructive"
+      });
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+      setResizeState(null);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('blocks')
+        .update({
+          start_at: block.start_at,
+          end_at: block.end_at
+        })
+        .eq('id', block.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Block resized",
+        description: "Duration updated successfully"
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+    } catch (error) {
+      console.error('Error resizing block:', error);
+      toast({
+        title: "Failed to resize block",
+        description: "Reverting changes",
+        variant: "destructive"
+      });
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+    } finally {
+      setResizeState(null);
+    }
+  };
+
   return (
     <TooltipProvider>
-      <div className="space-y-6 animate-fade-in">
+      <div 
+        className="space-y-6 animate-fade-in"
+        onMouseMove={(e) => {
+          if (dragState) handleDragMove(e);
+          if (resizeState) handleResizeMove(e);
+        }}
+        onMouseUp={() => {
+          if (dragState) handleDragEnd();
+          if (resizeState) handleResizeEnd();
+        }}
+        onMouseLeave={() => {
+          if (dragState) handleDragEnd();
+          if (resizeState) handleResizeEnd();
+        }}
+      >
         <BlockDetailDialog 
           block={selectedBlock}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
+          onDelete={handleDeleteBlock}
         />
       {/* Current Block Card */}
       {currentBlock && (
@@ -450,20 +667,41 @@ export const TimelineView = () => {
               {blocks.map((block) => {
                 const { top, height, styling } = getBlockPosition(block);
                 const duration = getBlockDuration(block);
+                const isHovered = hoveredBlock === block.id;
+                const isDragging = dragState?.blockId === block.id;
+                const isResizing = resizeState?.blockId === block.id;
                 
                 const blockContent = (
                   <Card
                     key={block.id}
-                    onClick={() => handleBlockClick(block)}
-                    className={`absolute left-0 right-0 border-l-4 ${getBlockColor(block.type)} bg-card/50 backdrop-blur hover:bg-card/70 hover:scale-[1.02] hover:z-50 hover:shadow-lg transition-all cursor-pointer overflow-hidden`}
+                    onMouseEnter={() => setHoveredBlock(block.id)}
+                    onMouseLeave={() => setHoveredBlock(null)}
+                    onClick={() => !isDragging && !isResizing && handleBlockClick(block)}
+                    className={`absolute left-0 right-0 border-l-4 ${getBlockColor(block.type)} bg-card/50 backdrop-blur hover:bg-card/70 transition-all cursor-pointer overflow-hidden group ${
+                      isDragging || isResizing ? 'opacity-70 shadow-xl scale-105' : ''
+                    } ${isHovered ? 'shadow-lg scale-[1.01] z-50' : ''}`}
                     style={{
                       top: `${top}px`,
                       height: `${height}px`,
-                      zIndex: styling.zIndex,
+                      zIndex: isDragging || isResizing ? 100 : isHovered ? 90 : styling.zIndex,
                       padding: duration < 15 ? '4px 8px' : '12px',
                     }}
                   >
-                    <div className="flex items-start justify-between h-full gap-2">
+                    {/* Top resize handle */}
+                    {isHovered && duration >= 15 && (
+                      <div
+                        className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize bg-primary/20 hover:bg-primary/40 transition-colors"
+                        onMouseDown={(e) => handleResizeStart(e, block, 'top')}
+                      />
+                    )}
+                    
+                    {/* Drag handle */}
+                    <div
+                      className={`flex items-start justify-between h-full gap-2 ${
+                        isHovered && duration >= 15 ? 'cursor-move' : ''
+                      }`}
+                      onMouseDown={(e) => duration >= 15 && handleDragStart(e, block)}
+                    >
                       <div className="min-w-0 flex-1 overflow-hidden">
                         <p className={`font-medium ${styling.titleSize} truncate leading-tight`}>
                           {block.title}
@@ -486,6 +724,14 @@ export const TimelineView = () => {
                         <div className="flex-shrink-0 w-2 h-2 rounded-full bg-primary/40" />
                       )}
                     </div>
+
+                    {/* Bottom resize handle */}
+                    {isHovered && duration >= 15 && (
+                      <div
+                        className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize bg-primary/20 hover:bg-primary/40 transition-colors"
+                        onMouseDown={(e) => handleResizeStart(e, block, 'bottom')}
+                      />
+                    )}
                   </Card>
                 );
                 
