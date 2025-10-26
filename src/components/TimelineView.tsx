@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { BlockDetailDialog } from "./BlockDetailDialog";
+import { useState } from "react";
 
 interface TimeBlock {
   id: string;
@@ -19,6 +21,9 @@ interface TimeBlock {
 }
 
 export const TimelineView = () => {
+  const [selectedBlock, setSelectedBlock] = useState<TimeBlock | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  
   const hours = Array.from({ length: 24 }, (_, i) => (i + 6) % 24); // 6 AM to 6 AM next day
   const PIXELS_PER_MINUTE = 2; // 120px per hour for better readability
   const TIMELINE_START_HOUR = 6; // 6 AM
@@ -133,8 +138,18 @@ export const TimelineView = () => {
     return <div className="text-center py-8">Loading your schedule...</div>;
   }
 
+  const handleBlockClick = (block: TimeBlock) => {
+    setSelectedBlock(block);
+    setDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <BlockDetailDialog 
+        block={selectedBlock}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
       {/* Current Block Card */}
       {currentBlock && (
         <Card className="glass border-primary/30 p-6">
@@ -223,7 +238,8 @@ export const TimelineView = () => {
                 return (
                   <Card
                     key={block.id}
-                    className={`absolute left-0 right-0 p-3 border-l-4 ${getBlockColor(block.type)} bg-card/50 backdrop-blur hover:bg-card/70 transition-all cursor-pointer`}
+                    onClick={() => handleBlockClick(block)}
+                    className={`absolute left-0 right-0 p-3 border-l-4 ${getBlockColor(block.type)} bg-card/50 backdrop-blur hover:bg-card/70 hover:scale-[1.02] transition-all cursor-pointer`}
                     style={{
                       top: `${top}px`,
                       height: `${height}px`,
