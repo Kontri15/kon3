@@ -50,6 +50,7 @@ export const TimelineView = () => {
     const end = parseISO(block.end_at);
     const durationMinutes = (end.getTime() - start.getTime()) / 60000;
     
+    // Get local hours and minutes
     let startMinutes = start.getHours() * 60 + start.getMinutes();
     
     // If block starts before 6 AM (midnight to 5:59 AM), it's "next day" - add 24 hours
@@ -57,7 +58,7 @@ export const TimelineView = () => {
       startMinutes += 24 * 60;
     }
     
-    const timelineStartMinutes = TIMELINE_START_HOUR * 60;
+    const timelineStartMinutes = TIMELINE_START_HOUR * 60; // 6 AM = 360 minutes
     const topPosition = (startMinutes - timelineStartMinutes) * PIXELS_PER_MINUTE;
     const height = Math.max(durationMinutes * PIXELS_PER_MINUTE, 30); // Minimum 30px height
     
