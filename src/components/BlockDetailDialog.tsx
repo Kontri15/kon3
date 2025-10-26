@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Clock, Calendar, Tag, FileText, CheckCircle2, XCircle, Trash2, Save } from "lucide-react";
@@ -45,6 +45,8 @@ export const BlockDetailDialog = ({ block, open, onOpenChange, onDelete }: Block
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [actualMinutes, setActualMinutes] = useState("");
+  const [isCompletingTask, setIsCompletingTask] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -125,6 +127,106 @@ export const BlockDetailDialog = ({ block, open, onOpenChange, onDelete }: Block
     }
   };
 
+  const handleMarkDone = async () => {
+    if (!block.task_id) {
+      toast({
+        title: "Cannot complete",
+        description: "This block is not linked to a task",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const minutes = parseInt(actualMinutes);
+    if (isNaN(minutes) || minutes <= 0) {
+      toast({
+        title: "Invalid input",
+        description: "Please enter a valid number of minutes",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCompletingTask(true);
+    try {
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({ 
+          status: 'done',
+          actual_min: minutes
+        })
+        .eq('id', block.task_id);
+
+      if (taskError) throw taskError;
+
+      const { error: blockError } = await supabase
+        .from('blocks')
+        .update({ status: 'done' })
+        .eq('id', block.id);
+
+      if (blockError) throw blockError;
+
+      toast({
+        title: "Task completed!",
+        description: `Took ${minutes} minutes`
+      });
+
+      setActualMinutes('');
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error marking task done:', error);
+      toast({
+        title: "Failed to complete task",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCompletingTask(false);
+    }
+  };
+
+  const handleMarkNotDone = async () => {
+    if (!block.task_id) return;
+
+    setIsCompletingTask(true);
+    try {
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({
+          status: 'todo',
+          actual_min: null
+        })
+        .eq('id', block.task_id);
+
+      if (taskError) throw taskError;
+
+      const { error: blockError } = await supabase
+        .from('blocks')
+        .update({ status: 'planned' })
+        .eq('id', block.id);
+
+      if (blockError) throw blockError;
+
+      toast({
+        title: "Task reopened",
+        description: "Task marked as not done"
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error marking task not done:', error);
+      toast({
+        title: "Failed to reopen task",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCompletingTask(false);
+    }
+  };
+
   const formatTime = (isoString: string) => {
     return format(parseISO(isoString), 'HH:mm');
   };
@@ -164,6 +266,9 @@ export const BlockDetailDialog = ({ block, open, onOpenChange, onDelete }: Block
             <div className={`w-3 h-3 rounded-full ${getTypeColor(block.type)}`} />
             {block.title}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            View and edit block details, timing, and completion status
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
@@ -312,12 +417,49 @@ export const BlockDetailDialog = ({ block, open, onOpenChange, onDelete }: Block
               <Trash2 className="w-4 h-4" />
               Delete Block
             </Button>
-            <Button 
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Close
-            </Button>
+            
+            <div className="flex gap-2">
+              {block.type === 'task' && block.task_id && (
+                block.status === 'done' ? (
+                  <Button 
+                    variant="outline" 
+                    className="gap-2"
+                    onClick={handleMarkNotDone}
+                    disabled={isCompletingTask}
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Reopen Task
+                  </Button>
+                ) : (
+                  <>
+                    <Input
+                      type="number"
+                      placeholder="Actual minutes"
+                      value={actualMinutes}
+                      onChange={(e) => setActualMinutes(e.target.value)}
+                      className="w-32"
+                      min="1"
+                    />
+                    <Button 
+                      className="gap-2 bg-success hover:bg-success/80"
+                      onClick={handleMarkDone}
+                      disabled={isCompletingTask || !actualMinutes}
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {isCompletingTask ? "Saving..." : "Mark Done"}
+                    </Button>
+                  </>
+                )
+              )}
+              {(!block.task_id || block.type !== 'task') && (
+                <Button 
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Close
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
