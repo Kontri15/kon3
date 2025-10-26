@@ -14,6 +14,9 @@ const Settings = () => {
   const [isWhoopConnected, setIsWhoopConnected] = useState(false);
   const [isCheckingWhoop, setIsCheckingWhoop] = useState(true);
 
+  // Use fixed user ID for single-user app
+  const SINGLE_USER_ID = 'single-user';
+
   useEffect(() => {
     checkWhoopConnection();
     
@@ -25,13 +28,10 @@ const Settings = () => {
 
   const checkWhoopConnection = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { data, error } = await supabase
         .from('oauth_tokens')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', SINGLE_USER_ID)
         .eq('provider', 'whoop')
         .single();
 
@@ -45,12 +45,6 @@ const Settings = () => {
 
   const handleWhoopConnect = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('Please log in first');
-        return;
-      }
-
       const WHOOP_CLIENT_ID = '487e3de5-cc9a-4a04-9fc4-b89f2d460a49';
       const REDIRECT_URI = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whoop-oauth-callback`;
       
@@ -59,7 +53,7 @@ const Settings = () => {
         `client_id=${WHOOP_CLIENT_ID}&` +
         `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
         `scope=read:recovery read:sleep&` +
-        `state=${user.id}`;
+        `state=${SINGLE_USER_ID}`;
 
       window.location.href = authUrl;
     } catch (error) {
@@ -70,13 +64,10 @@ const Settings = () => {
 
   const handleWhoopDisconnect = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { error } = await supabase
         .from('oauth_tokens')
         .delete()
-        .eq('user_id', user.id)
+        .eq('user_id', SINGLE_USER_ID)
         .eq('provider', 'whoop');
 
       if (error) throw error;

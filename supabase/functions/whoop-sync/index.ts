@@ -12,14 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    const { user_id } = await req.json();
+    const body = await req.json();
+    // Default to single-user ID if not provided
+    const user_id = body.user_id || 'single-user';
 
-    if (!user_id) {
-      return new Response('Missing user_id', { 
-        status: 400,
-        headers: corsHeaders 
-      });
-    }
+    console.log('Starting WHOOP sync for user:', user_id);
 
     const WHOOP_CLIENT_ID = Deno.env.get('WHOOP_CLIENT_ID');
     const WHOOP_CLIENT_SECRET = Deno.env.get('WHOOP_CLIENT_SECRET');
