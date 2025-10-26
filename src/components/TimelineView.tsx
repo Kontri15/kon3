@@ -20,7 +20,7 @@ interface TimeBlock {
 
 export const TimelineView = () => {
   const hours = Array.from({ length: 24 }, (_, i) => (i + 6) % 24); // 6 AM to 6 AM next day
-  const PIXELS_PER_MINUTE = 1; // 60px per hour
+  const PIXELS_PER_MINUTE = 2; // 120px per hour for better readability
   const TIMELINE_START_HOUR = 6; // 6 AM
   
   const { data: blocks = [], isLoading } = useQuery({
@@ -32,11 +32,12 @@ export const TimelineView = () => {
       // End at 6 AM tomorrow (24 hours later)
       const queryEndTime = new Date(queryStartTime.getTime() + 24 * 60 * 60 * 1000);
       
+      // Fetch blocks that either START or END within our time window
+      // This captures overnight blocks like sleep that span midnight
       const { data, error } = await supabase
         .from('blocks')
         .select('*')
-        .gte('start_at', queryStartTime.toISOString())
-        .lt('start_at', queryEndTime.toISOString())
+        .or(`and(start_at.gte.${queryStartTime.toISOString()},start_at.lt.${queryEndTime.toISOString()}),and(end_at.gt.${queryStartTime.toISOString()},end_at.lte.${queryEndTime.toISOString()})`)
         .order('start_at');
       
       if (error) throw error;
@@ -55,7 +56,13 @@ export const TimelineView = () => {
   const getBlockPosition = (block: TimeBlock) => {
     const start = parseISO(block.start_at);
     const end = parseISO(block.end_at);
-    const durationMinutes = (end.getTime() - start.getTime()) / 60000;
+    let durationMinutes = (end.getTime() - start.getTime()) / 60000;
+    
+    // Handle 0-duration or negative duration blocks
+    if (durationMinutes <= 0) {
+      console.warn(`Block "${block.title}" has invalid duration (${durationMinutes}min), using default 30 min`);
+      durationMinutes = 30;
+    }
     
     // Use UTC components to treat database times as local times
     const utcDate = new Date(block.start_at);
@@ -68,7 +75,7 @@ export const TimelineView = () => {
     
     const timelineStartMinutes = TIMELINE_START_HOUR * 60; // 6 AM = 360 minutes
     const topPosition = (startMinutes - timelineStartMinutes) * PIXELS_PER_MINUTE;
-    const height = Math.max(durationMinutes * PIXELS_PER_MINUTE, 30); // Minimum 30px height
+    const height = Math.max(durationMinutes * PIXELS_PER_MINUTE, 40); // Minimum 40px height for readability
     
     return { top: topPosition, height };
   };
@@ -89,6 +96,13 @@ export const TimelineView = () => {
       break: "bg-card/50 border-l-gray-400",
     };
     return colors[type] || colors.task;
+  };
+
+  const getTimeOfDayBackground = (hour: number) => {
+    if (hour >= 6 && hour < 12) return "bg-blue-500/5"; // Morning
+    if (hour >= 12 && hour < 18) return "bg-background"; // Afternoon
+    if (hour >= 18 && hour < 22) return "bg-orange-500/5"; // Evening
+    return "bg-slate-500/5"; // Night/Early morning
   };
 
   if (isLoading) {
@@ -135,24 +149,47 @@ export const TimelineView = () => {
         ) : (
           <div className="flex gap-4">
             {/* Hour markers */}
-            <div className="w-16 flex-shrink-0 space-y-[60px]">
-              {hours.map((hour) => (
-                <div key={hour} className="h-[60px]">
-                  <span className="timeline-hour">
-                    {hour.toString().padStart(2, '0')}:00
-                  </span>
+            <div className="w-16 flex-shrink-0 relative" style={{ height: `${24 * 60 * PIXELS_PER_MINUTE}px` }}>
+              {hours.map((hour, index) => (
+                <div
+                  key={hour}
+                  className="absolute w-full text-right pr-3 text-sm font-medium text-muted-foreground"
+                  style={{ top: `${index * 60 * PIXELS_PER_MINUTE}px` }}
+                >
+                  {hour.toString().padStart(2, '0')}:00
                 </div>
               ))}
             </div>
             
             {/* Timeline container with blocks */}
-            <div className="flex-1 relative" style={{ height: `${24 * 60}px` }}>
+            <div className="flex-1 relative border-l border-border" style={{ height: `${24 * 60 * PIXELS_PER_MINUTE}px` }}>
+              {/* Time-of-day background sections */}
+              {hours.map((hour, index) => (
+                <div
+                  key={`bg-${hour}`}
+                  className={`absolute w-full ${getTimeOfDayBackground(hour)}`}
+                  style={{ 
+                    top: `${index * 60 * PIXELS_PER_MINUTE}px`,
+                    height: `${60 * PIXELS_PER_MINUTE}px`
+                  }}
+                />
+              ))}
+              
               {/* Hour grid lines */}
               {hours.map((hour, index) => (
                 <div
-                  key={hour}
-                  className="absolute left-0 right-0 border-t border-dashed border-border/30"
-                  style={{ top: `${index * 60}px` }}
+                  key={`line-${hour}`}
+                  className="absolute left-0 right-0 border-t border-border"
+                  style={{ top: `${index * 60 * PIXELS_PER_MINUTE}px` }}
+                />
+              ))}
+              
+              {/* Half-hour lines */}
+              {hours.map((hour, index) => (
+                <div
+                  key={`half-${hour}`}
+                  className="absolute left-0 right-0 border-t border-border/30"
+                  style={{ top: `${(index * 60 + 30) * PIXELS_PER_MINUTE}px` }}
                 />
               ))}
               

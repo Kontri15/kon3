@@ -181,18 +181,19 @@ PLANNING PREFERENCES:
 - Digital detox: Every other Saturday - suppress screen-heavy tasks, prefer gym/swimming/groceries/analog activities
 
 SCHEDULING RULES (CRITICAL - USE EXACT TIMES):
-1. Pack hard-fixed events first (events + rituals with hard_fixed=true, hockey games)
-2. Build mode 06:10-08:00 EXACTLY: prioritize urgent PS Digital tasks > ChronoPilot > personal projects
+1. ALL BLOCKS MUST HAVE MINIMUM 5-MINUTE DURATION - never create 0-duration blocks
+2. Pack hard-fixed events first (events + rituals with hard_fixed=true, hockey games)
+3. Build mode 06:10-08:00 EXACTLY: prioritize urgent PS Digital tasks > ChronoPilot > personal projects
    - If tasks require journaling, schedule 06:10-06:40 journaling block, shift deep work after
-3. Score tasks: (impact * 3) + (priority * 2) + (urgency_score) - (energy_mismatch_penalty)
-4. Cluster by tags/projects to minimize context switching
-5. Breaks: use "buffer" type for 5-10min rest every 50-90min
-6. Meals: 
+4. Score tasks: (impact * 3) + (priority * 2) + (urgency_score) - (energy_mismatch_penalty)
+5. Cluster by tags/projects to minimize context switching
+6. Breaks: use "buffer" type for 5-10min rest every 50-90min
+7. Meals: 
    - Lunch: 12:00-12:45 EXACTLY (use "meal" type, MUST specify: base + main e.g. "Rice with salmon")
    - Dinner: simple meal (use "meal" type, specify: "Bread with ham", "Bread with eggs", or "Yogurt with cereals")
    - Hockey days: schedule dinner BEFORE/DURING hockey game, NOT after gym
    - NO breakfast
-7. Exercise (use "ritual" type for all): 
+8. Exercise (use "ritual" type for all): 
    - Running: START at 07:00 weekdays / 07:30 weekends, 30min duration
    - Shower: 10 MINUTES (start 07:40 weekdays / 08:00 weekends)
    - Gym: 17:00-18:30 Mon-Sat per PPL-Active-PPL cycle (5min commute)
@@ -202,17 +203,22 @@ SCHEDULING RULES (CRITICAL - USE EXACT TIMES):
    - Sunday: If hockey scheduled, gym after at 18:30-19:30
    - Yoga: 10-15min before bed
    - Meditation: 10min before bed
-8. Supplements: 
+9. Supplements: 
    - Dinner: Omega-3, D3, Creatine (on training days)
    - 90min before sleep: Magnesium, Ashwagandha
-9. Sleep: bedtime routine at 21:30, sleep by 22:00 EXACTLY
-10. Day buffer: leave 10-15% unscheduled
-11. If WHOOP recovery <40%, prioritize active recovery over intense work
-12. Respect location constraints (home vs office vs any)
-13. Honor earliest_start, hard_window_start, hard_window_end if present
-14. Commute: 5min to gym, factor in office commute Mon-Thu
-15. Digital detox Saturday (every other): suppress screen tasks, prefer gym/swim/analog activities
-16. TIMEZONE: All times in Europe/Bratislava (UTC+1/+2), use ISO 8601 format with timezone offset
+10. Sleep: MUST be a continuous block from bedtime (22:00) to wake time (06:00 next day)
+    - Use type "sleep" for the main sleep block
+    - Pre-bed routine (21:30-22:00) should be separate with type "ritual"
+    - Sleep block format: start_at: "2025-10-26T22:00:00+01:00", end_at: "2025-10-27T06:00:00+01:00"
+11. Day buffer: leave 10-15% unscheduled
+12. If WHOOP recovery <40%, prioritize active recovery over intense work
+13. Respect location constraints (home vs office vs any)
+14. Honor earliest_start, hard_window_start, hard_window_end if present
+15. Commute: 5min to gym, factor in office commute Mon-Thu
+16. Digital detox Saturday (every other): suppress screen tasks, prefer gym/swim/analog activities
+17. TIMEZONE: All times in Europe/Bratislava (UTC+1/+2), use ISO 8601 format with timezone offset
+18. NO OVERLAPS: Ensure each block ends exactly when the next begins (or leave buffer time between)
+19. AVOID EARLY MORNING SCHEDULING: Do not schedule work/tasks before 06:00 unless explicitly required
 
 WHOOP DATA TODAY:
 - Recovery: ${whoop.recovery_pct || 'N/A'}%
