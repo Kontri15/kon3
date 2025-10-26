@@ -57,7 +57,10 @@ export const TimelineView = () => {
       
       const { data, error } = await supabase
         .from('blocks')
-        .select('*')
+        .select(`
+          *,
+          task:tasks(id, title, est_min, status)
+        `)
         .gte('start_at', queryStartTime)
         .lt('start_at', queryEndTime)
         .order('start_at');
@@ -209,19 +212,20 @@ export const TimelineView = () => {
   };
 
   const handleMarkDone = async () => {
-    if (!currentBlock || !currentBlock.task_id) {
+    if (!currentBlock?.task_id) {
       toast({
         title: "Cannot complete",
-        description: "Only task blocks can be marked as complete",
+        description: "This block is not linked to a task. Re-run 'Plan My Day' to link tasks.",
         variant: "destructive"
       });
       return;
     }
 
-    if (!actualMinutes) {
+    const minutes = parseInt(actualMinutes);
+    if (isNaN(minutes) || minutes <= 0) {
       toast({
-        title: "Actual time required",
-        description: "Please enter how many minutes the task actually took",
+        title: "Invalid input",
+        description: "Please enter a valid number of minutes",
         variant: "destructive"
       });
       return;
@@ -234,7 +238,7 @@ export const TimelineView = () => {
         .from('tasks')
         .update({
           status: 'done',
-          actual_min: parseInt(actualMinutes)
+          actual_min: minutes
         })
         .eq('id', currentBlock.task_id);
 
@@ -250,7 +254,7 @@ export const TimelineView = () => {
 
       toast({
         title: "Task completed!",
-        description: `Completed in ${actualMinutes} minutes`
+        description: `Completed in ${minutes} minutes`
       });
 
       setActualMinutes("");
@@ -346,38 +350,40 @@ export const TimelineView = () => {
             </div>
             
             {/* Completion actions - only show for task blocks */}
-            {currentBlock.task_id && (
-              <div className="flex gap-2 items-start">
-                {currentBlock.status === 'done' ? (
+            {currentBlock.type === 'task' && (
+              !currentBlock.task_id ? (
+                <Badge variant="outline" className="text-amber-600 border-amber-600">
+                  Not linked - re-run Plan
+                </Badge>
+              ) : currentBlock.status === 'done' ? (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleMarkNotDone}
+                  disabled={isUpdating}
+                >
+                  Reopen
+                </Button>
+              ) : (
+                <div className="flex gap-2 items-start">
+                  <Input
+                    type="number"
+                    placeholder="Actual min"
+                    value={actualMinutes}
+                    onChange={(e) => setActualMinutes(e.target.value)}
+                    className="w-28 h-9"
+                    min="1"
+                  />
                   <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleMarkNotDone}
-                    disabled={isUpdating}
+                    size="sm" 
+                    className="bg-success hover:bg-success/80"
+                    onClick={handleMarkDone}
+                    disabled={isUpdating || !actualMinutes}
                   >
-                    Reopen
+                    {isUpdating ? "Saving..." : "Mark Done"}
                   </Button>
-                ) : (
-                  <>
-                    <Input
-                      type="number"
-                      placeholder="Actual min"
-                      value={actualMinutes}
-                      onChange={(e) => setActualMinutes(e.target.value)}
-                      className="w-24 h-9"
-                      min="1"
-                    />
-                    <Button 
-                      size="sm" 
-                      className="bg-success hover:bg-success/80"
-                      onClick={handleMarkDone}
-                      disabled={isUpdating || !actualMinutes}
-                    >
-                      Done
-                    </Button>
-                  </>
-                )}
-              </div>
+                </div>
+              )
             )}
           </div>
         </Card>

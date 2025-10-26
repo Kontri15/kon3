@@ -449,6 +449,36 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
       }
     }
 
+    // Match task blocks to actual tasks in database
+    console.log('Matching task blocks to database tasks...');
+    const taskBlocks = blocks.filter((b: any) => b.type === 'task');
+    let matchedCount = 0;
+    
+    for (const block of taskBlocks) {
+      // Try exact match first (case-insensitive)
+      const blockTitle = block.title.toLowerCase().trim();
+      let matchedTask = tasks.find(t => t.title.toLowerCase().trim() === blockTitle);
+      
+      // If no exact match, try fuzzy match (check if task title is contained in block title or vice versa)
+      if (!matchedTask) {
+        matchedTask = tasks.find(t => {
+          const taskTitle = t.title.toLowerCase().trim();
+          return blockTitle.includes(taskTitle) || taskTitle.includes(blockTitle);
+        });
+      }
+      
+      if (matchedTask) {
+        block.task_id = matchedTask.id;
+        matchedCount++;
+        console.log(`  ✓ Matched "${block.title}" → task "${matchedTask.title}"`);
+      } else {
+        console.warn(`  ✗ No match for task block: "${block.title}"`);
+        block.task_id = null;
+      }
+    }
+    
+    console.log(`Task matching complete: ${matchedCount}/${taskBlocks.length} blocks matched`);
+
     // Delete existing planned blocks for today
     const todayStart = new Date(today.setHours(0, 0, 0, 0)).toISOString();
     const todayEnd = new Date(today.setHours(23, 59, 59, 999)).toISOString();
