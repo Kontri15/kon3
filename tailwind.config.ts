@@ -57,6 +57,26 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          elevated: "hsl(var(--surface-elevated))",
+        },
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
+        info: "hsl(var(--info))",
+        energy: {
+          high: "hsl(var(--energy-high))",
+          medium: "hsl(var(--energy-medium))",
+          low: "hsl(var(--energy-low))",
+        },
+        block: {
+          task: "hsl(var(--block-task))",
+          ritual: "hsl(var(--block-ritual))",
+          event: "hsl(var(--block-event))",
+          meal: "hsl(var(--block-meal))",
+          sleep: "hsl(var(--block-sleep))",
+          buffer: "hsl(var(--block-buffer))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
