@@ -117,7 +117,9 @@ Deno.serve(async (req) => {
 
 USER PROFILE & DAILY ROUTINE:
 - Wake time: 06:00
-- Build mode focus (SACRED): 06:10-08:00 - work on ChronoPilot app (highest priority cognitive work)
+- Build mode focus (SACRED): 06:10-08:00 - highest priority cognitive/deep work (could be ChronoPilot app, personal projects, learning, etc.)
+- Running: 07:00 weekdays, 07:30 weekends (should be scheduled when possible)
+- Shower: 07:40 weekdays, 08:00 weekends
 - Lunch window: 12:00-12:45 (FIXED)
 - Pre-bed routine: starts 21:30
 - Lights out: 22:00
@@ -134,7 +136,7 @@ TRAINING & EXERCISE (6x per week):
 - Typical time: 17:00-18:00 or 18:30
 - Progressive overload: +10% weight after 2 successful consecutive weeks; -5% if missed twice
 - Football: Thursdays occasionally (treat as Active day, shift PPL accordingly)
-- Running: 07:00 weekdays, 07:30 weekends (optional/suppressed during build_mode mornings)
+- Running: Already covered in daily routine above
 - Yoga: 10-15min before bed
 - Meditation: 10min before bed
 
