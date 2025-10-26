@@ -128,11 +128,13 @@ SCHEDULING RULES:
 2. Heaviest cognitive tasks during deep work (06:10-08:00)
 3. Score tasks: (impact * 3) + (priority * 2) + (urgency_score) - (energy_mismatch_penalty)
 4. Cluster by tags/projects (minimize context switching)
-5. Breaks: 5-10min every 50-90min of focused work
-6. Day buffer: leave 10-15% unscheduled
-7. If WHOOP recovery <40%, prioritize active recovery over intense work
-8. Respect location constraints (home vs office vs any)
-9. Honor earliest_start, hard_window_start, hard_window_end if present
+5. Breaks: use "buffer" type for 5-10min rest periods every 50-90min of focused work
+6. Meals: use "meal" type for breakfast/lunch/dinner
+7. Sleep: use "sleep" type for bedtime routine and actual sleep
+8. Day buffer: leave 10-15% unscheduled
+9. If WHOOP recovery <40%, prioritize active recovery over intense work
+10. Respect location constraints (home vs office vs any)
+11. Honor earliest_start, hard_window_start, hard_window_end if present
 
 WHOOP DATA TODAY:
 - Recovery: ${whoop.recovery_pct || 'N/A'}%
@@ -146,7 +148,7 @@ Return ONLY a JSON array of blocks (no markdown, no explanation):
     "title": "Block title",
     "start_at": "2025-10-26T06:10:00Z",
     "end_at": "2025-10-26T08:00:00Z",
-    "type": "task" | "ritual" | "event" | "meal" | "break",
+    "type": "task" | "ritual" | "event" | "meal" | "sleep" | "buffer" | "commute",
     "status": "planned",
     "task_id": "uuid or null",
     "ritual_id": "uuid or null",
