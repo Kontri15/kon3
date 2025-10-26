@@ -216,13 +216,15 @@ Return ONLY a JSON array of blocks (no markdown, no explanation):
     "title": "Block title",
     "start_at": "2025-10-26T06:10:00Z",
     "end_at": "2025-10-26T08:00:00Z",
-    "type": "task" | "ritual" | "event" | "meal" | "sleep" | "buffer" | "commute" | "exercise",
+    "type": "task" | "ritual" | "event" | "meal" | "sleep" | "buffer" | "commute",
     "status": "planned",
     "task_id": "uuid or null",
     "ritual_id": "uuid or null",
     "notes": "Optional context"
   }
 ]
+
+IMPORTANT: Use "ritual" type for all exercise-related activities (running, shower, gym, yoga, meditation, etc.)
 
 Use ISO 8601 timestamps in Europe/Bratislava timezone. Ensure no overlaps. Fill the entire day 06:00-22:00.`;
 
