@@ -1,13 +1,15 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Zap } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Clock, Zap, CheckCircle2 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { BlockDetailDialog } from "./BlockDetailDialog";
 import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 interface TimeBlock {
   id: string;
@@ -24,6 +26,10 @@ interface TimeBlock {
 export const TimelineView = () => {
   const [selectedBlock, setSelectedBlock] = useState<TimeBlock | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [actualMinutes, setActualMinutes] = useState<string>("");
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const hours = Array.from({ length: 24 }, (_, i) => (i + 6) % 24); // 6 AM to 6 AM next day
   const PIXELS_PER_MINUTE = 2; // 120px per hour for better readability
@@ -202,6 +208,109 @@ export const TimelineView = () => {
     setDialogOpen(true);
   };
 
+  const handleMarkDone = async () => {
+    if (!currentBlock || !currentBlock.task_id) {
+      toast({
+        title: "Cannot complete",
+        description: "Only task blocks can be marked as complete",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!actualMinutes) {
+      toast({
+        title: "Actual time required",
+        description: "Please enter how many minutes the task actually took",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      // Update task status and actual_min
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({
+          status: 'done',
+          actual_min: parseInt(actualMinutes)
+        })
+        .eq('id', currentBlock.task_id);
+
+      if (taskError) throw taskError;
+
+      // Update block status
+      const { error: blockError } = await supabase
+        .from('blocks')
+        .update({ status: 'done' })
+        .eq('id', currentBlock.id);
+
+      if (blockError) throw blockError;
+
+      toast({
+        title: "Task completed!",
+        description: `Completed in ${actualMinutes} minutes`
+      });
+
+      setActualMinutes("");
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+    } catch (error) {
+      console.error('Error marking task done:', error);
+      toast({
+        title: "Failed to update",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleMarkNotDone = async () => {
+    if (!currentBlock || !currentBlock.task_id) {
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      // Update task status back to todo
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({
+          status: 'todo',
+          actual_min: null
+        })
+        .eq('id', currentBlock.task_id);
+
+      if (taskError) throw taskError;
+
+      // Update block status
+      const { error: blockError } = await supabase
+        .from('blocks')
+        .update({ status: 'planned' })
+        .eq('id', currentBlock.id);
+
+      if (blockError) throw blockError;
+
+      toast({
+        title: "Task reopened",
+        description: "Task marked as not done"
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+    } catch (error) {
+      console.error('Error marking task not done:', error);
+      toast({
+        title: "Failed to update",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <TooltipProvider>
       <div className="space-y-6 animate-fade-in">
@@ -212,13 +321,21 @@ export const TimelineView = () => {
         />
       {/* Current Block Card */}
       {currentBlock && (
-        <Card className="glass border-primary/30 p-6">
+        <Card className={`glass p-6 ${currentBlock.status === 'done' ? 'border-success/50' : 'border-primary/30'}`}>
           <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <Badge variant="secondary" className="bg-secondary/20 text-secondary-foreground">
-                <Zap className="w-3 h-3 mr-1" />
-                Active Now
-              </Badge>
+            <div className="space-y-2 flex-1">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="bg-secondary/20 text-secondary-foreground">
+                  <Zap className="w-3 h-3 mr-1" />
+                  Active Now
+                </Badge>
+                {currentBlock.status === 'done' && (
+                  <Badge className="bg-success/20 text-success border-success/30">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Completed
+                  </Badge>
+                )}
+              </div>
               <h2 className="text-2xl font-bold text-foreground">{currentBlock.title}</h2>
               <p className="text-muted-foreground">
                 {formatTimeFromLocal(currentBlock.start_at)} - {formatTimeFromLocal(currentBlock.end_at)}
@@ -227,10 +344,41 @@ export const TimelineView = () => {
                 <p className="text-sm text-muted-foreground">{currentBlock.notes}</p>
               )}
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">Not Done</Button>
-              <Button size="sm" className="bg-success hover:bg-success/80">Done</Button>
-            </div>
+            
+            {/* Completion actions - only show for task blocks */}
+            {currentBlock.task_id && (
+              <div className="flex gap-2 items-start">
+                {currentBlock.status === 'done' ? (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleMarkNotDone}
+                    disabled={isUpdating}
+                  >
+                    Reopen
+                  </Button>
+                ) : (
+                  <>
+                    <Input
+                      type="number"
+                      placeholder="Actual min"
+                      value={actualMinutes}
+                      onChange={(e) => setActualMinutes(e.target.value)}
+                      className="w-24 h-9"
+                      min="1"
+                    />
+                    <Button 
+                      size="sm" 
+                      className="bg-success hover:bg-success/80"
+                      onClick={handleMarkDone}
+                      disabled={isUpdating || !actualMinutes}
+                    >
+                      Done
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </Card>
       )}
