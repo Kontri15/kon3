@@ -72,28 +72,23 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the first (only) user profile
-    const { data: profiles } = await supabase.from('profiles').select('id').limit(1);
-    if (!profiles || profiles.length === 0) {
-      throw new Error('No user profile found. Please create a profile first.');
-    }
-    const userId = profiles[0].id;
+    // Single-user mode: use static user ID
+    const userId = '00000000-0000-0000-0000-000000000001';
+    console.log('Planning day (single-user mode)');
 
-    console.log('Planning day for user:', userId);
-
-    // Fetch all required data
-    const [tasksRes, ritualsRes, eventsRes, profileRes, whoopRes] = await Promise.all([
-      supabase.from('tasks').select('*').eq('status', 'todo').eq('user_id', userId),
-      supabase.from('rituals').select('*').eq('user_id', userId),
-      supabase.from('events').select('*').eq('user_id', userId).gte('start_at', new Date().toISOString()),
-      supabase.from('profiles').select('*').eq('id', userId).single(),
-      supabase.from('whoop_daily').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(1).single()
+    // Fetch all required data (all optional - will work with empty DB)
+    const [tasksRes, ritualsRes, eventsRes] = await Promise.all([
+      supabase.from('tasks').select('*').eq('status', 'todo'),
+      supabase.from('rituals').select('*'),
+      supabase.from('events').select('*').gte('start_at', new Date().toISOString())
     ]);
 
     const tasks: Task[] = tasksRes.data || [];
     const rituals: Ritual[] = ritualsRes.data || [];
     const events: Event[] = eventsRes.data || [];
-    const profile: Profile = profileRes.data || {
+    
+    // Use sensible defaults for profile
+    const profile: Profile = {
       build_mode: true,
       home_city: 'BA',
       work_arrival: '08:30:00',
@@ -102,9 +97,15 @@ Deno.serve(async (req) => {
       bedtime: '22:00:00',
       prebed_start: '21:30:00'
     };
-    const whoop: WhoopData = whoopRes.data || {};
+    
+    const whoop: WhoopData = {};
 
     console.log(`Loaded: ${tasks.length} tasks, ${rituals.length} rituals, ${events.length} events`);
+    
+    // If no data exists, AI will create a balanced template day
+    if (tasks.length === 0 && rituals.length === 0 && events.length === 0) {
+      console.log('No tasks/rituals/events found - will generate template schedule');
+    }
 
     // Build AI prompt
     const today = new Date();
@@ -157,15 +158,24 @@ Use ISO 8601 timestamps. Ensure no overlaps. Fill the entire day 06:00-22:00.`;
 
     const userPrompt = `
 TASKS (${tasks.length}):
-${tasks.map(t => `- "${t.title}" [${t.est_min || 60}min, priority=${t.priority}, impact=${t.impact}, energy=${t.energy_need}, tags=${t.tags?.join(',') || 'none'}] ${t.due_at ? `DUE: ${t.due_at}` : ''}`).join('\n')}
+${tasks.length > 0 ? tasks.map(t => `- "${t.title}" [${t.est_min || 60}min, priority=${t.priority}, impact=${t.impact}, energy=${t.energy_need}, tags=${t.tags?.join(',') || 'none'}] ${t.due_at ? `DUE: ${t.due_at}` : ''}`).join('\n') : '(No tasks - create a balanced day with deep work, breaks, meals, and personal time)'}
 
 RITUALS (${rituals.length}):
-${rituals.map(r => `- "${r.name}" [${r.duration_min}min, ${r.hard_fixed ? 'HARD-FIXED' : 'flexible'}, preferred=${r.preferred_start || 'any'}, days=${r.days_of_week?.join(',') || 'all'}]`).join('\n')}
+${rituals.length > 0 ? rituals.map(r => `- "${r.name}" [${r.duration_min}min, ${r.hard_fixed ? 'HARD-FIXED' : 'flexible'}, preferred=${r.preferred_start || 'any'}, days=${r.days_of_week?.join(',') || 'all'}]`).join('\n') : '(No rituals - suggest standard morning routine, exercise, meals, and wind-down)'}
 
 EVENTS (${events.length}):
-${events.map(e => `- "${e.title}" [${e.start_at} to ${e.end_at}, ${e.hard_fixed ? 'HARD-FIXED' : 'flexible'}]`).join('\n')}
+${events.length > 0 ? events.map(e => `- "${e.title}" [${e.start_at} to ${e.end_at}, ${e.hard_fixed ? 'HARD-FIXED' : 'flexible'}]`).join('\n') : '(No events)'}
 
-Generate optimal schedule as JSON array.`;
+Generate optimal schedule as JSON array. If no tasks/rituals exist, create a productive template day with:
+- Deep work block (06:10-08:00)
+- Morning routine & breakfast
+- Focused work sessions with breaks
+- Lunch break
+- Afternoon work/projects
+- Exercise time
+- Dinner
+- Evening wind-down
+- Bedtime routine`;
 
     console.log('Calling Lovable AI...');
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
