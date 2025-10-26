@@ -7,6 +7,7 @@ import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { BlockDetailDialog } from "./BlockDetailDialog";
 import { useState } from "react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface TimeBlock {
   id: string;
@@ -67,6 +68,61 @@ export const TimelineView = () => {
     return format(date, 'HH:mm');
   };
 
+  const getBlockDuration = (block: TimeBlock) => {
+    const start = parseISO(block.start_at);
+    const end = parseISO(block.end_at);
+    const durationMs = end.getTime() - start.getTime();
+    return Math.max(durationMs / (1000 * 60), 1); // Return minutes, minimum 1
+  };
+
+  const getBlockStyling = (durationMinutes: number) => {
+    if (durationMinutes < 15) {
+      // Micro blocks: < 15 minutes
+      return {
+        minHeight: 20,
+        titleSize: "text-[10px]",
+        timeSize: "text-[9px]",
+        showTime: false,
+        showBadge: false,
+        showNotes: false,
+        zIndex: 90 + Math.floor(15 - durationMinutes), // Higher z-index for shorter blocks
+      };
+    } else if (durationMinutes < 30) {
+      // Short blocks: 15-30 minutes
+      return {
+        minHeight: 30,
+        titleSize: "text-xs",
+        timeSize: "text-[10px]",
+        showTime: true,
+        showBadge: false,
+        showNotes: false,
+        zIndex: 80 + Math.floor(30 - durationMinutes),
+      };
+    } else if (durationMinutes < 60) {
+      // Medium blocks: 30-60 minutes
+      return {
+        minHeight: 40,
+        titleSize: "text-sm",
+        timeSize: "text-xs",
+        showTime: true,
+        showBadge: true,
+        showNotes: false,
+        zIndex: 70,
+      };
+    } else {
+      // Full blocks: > 60 minutes
+      return {
+        minHeight: 40,
+        titleSize: "text-sm",
+        timeSize: "text-xs",
+        showTime: true,
+        showBadge: true,
+        showNotes: true,
+        zIndex: 60,
+      };
+    }
+  };
+
   const getBlockPosition = (block: TimeBlock) => {
     const start = parseISO(block.start_at);
     const end = parseISO(block.end_at);
@@ -100,10 +156,13 @@ export const TimelineView = () => {
     // Calculate top position (relative to timeline start)
     const topPosition = (visibleStartMinutes - timelineStartMinutes) * PIXELS_PER_MINUTE;
     
-    // Calculate height (minimum 40px for visibility)
-    const height = Math.max(visibleDurationMinutes * PIXELS_PER_MINUTE, 40);
+    // Get styling config
+    const styling = getBlockStyling(visibleDurationMinutes);
     
-    return { top: topPosition, height };
+    // Calculate height (use actual duration but respect minimum from styling)
+    const height = Math.max(visibleDurationMinutes * PIXELS_PER_MINUTE, styling.minHeight);
+    
+    return { top: topPosition, height, styling };
   };
 
   const currentBlock = blocks.find(b => {
@@ -144,12 +203,13 @@ export const TimelineView = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <BlockDetailDialog 
-        block={selectedBlock}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-      />
+    <TooltipProvider>
+      <div className="space-y-6 animate-fade-in">
+        <BlockDetailDialog 
+          block={selectedBlock}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+        />
       {/* Current Block Card */}
       {currentBlock && (
         <Card className="glass border-primary/30 p-6">
@@ -234,38 +294,79 @@ export const TimelineView = () => {
               
               {/* Blocks */}
               {blocks.map((block) => {
-                const { top, height } = getBlockPosition(block);
-                return (
+                const { top, height, styling } = getBlockPosition(block);
+                const duration = getBlockDuration(block);
+                
+                const blockContent = (
                   <Card
                     key={block.id}
                     onClick={() => handleBlockClick(block)}
-                    className={`absolute left-0 right-0 p-3 border-l-4 ${getBlockColor(block.type)} bg-card/50 backdrop-blur hover:bg-card/70 hover:scale-[1.02] transition-all cursor-pointer`}
+                    className={`absolute left-0 right-0 border-l-4 ${getBlockColor(block.type)} bg-card/50 backdrop-blur hover:bg-card/70 hover:scale-[1.02] hover:z-50 hover:shadow-lg transition-all cursor-pointer overflow-hidden`}
                     style={{
                       top: `${top}px`,
                       height: `${height}px`,
+                      zIndex: styling.zIndex,
+                      padding: duration < 15 ? '4px 8px' : '12px',
                     }}
                   >
-                    <div className="flex items-start justify-between h-full">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm truncate">{block.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatTimeFromLocal(block.start_at)} - {formatTimeFromLocal(block.end_at)}
+                    <div className="flex items-start justify-between h-full gap-2">
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <p className={`font-medium ${styling.titleSize} truncate leading-tight`}>
+                          {block.title}
                         </p>
-                        {block.notes && height > 60 && (
+                        {styling.showTime && (
+                          <p className={`${styling.timeSize} text-muted-foreground mt-0.5`}>
+                            {formatTimeFromLocal(block.start_at)} - {formatTimeFromLocal(block.end_at)}
+                          </p>
+                        )}
+                        {styling.showNotes && block.notes && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{block.notes}</p>
                         )}
                       </div>
-                      <Badge variant="outline" className="capitalize flex-shrink-0 ml-2">
-                        {block.type}
-                      </Badge>
+                      {styling.showBadge && (
+                        <Badge variant="outline" className="capitalize flex-shrink-0 text-[10px] h-5">
+                          {block.type}
+                        </Badge>
+                      )}
+                      {!styling.showBadge && duration < 15 && (
+                        <div className="flex-shrink-0 w-2 h-2 rounded-full bg-primary/40" />
+                      )}
                     </div>
                   </Card>
                 );
+                
+                // Wrap very short blocks in a tooltip
+                if (duration < 30) {
+                  return (
+                    <Tooltip key={block.id}>
+                      <TooltipTrigger asChild>
+                        {blockContent}
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        <div className="space-y-1">
+                          <p className="font-semibold">{block.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatTimeFromLocal(block.start_at)} - {formatTimeFromLocal(block.end_at)}
+                          </p>
+                          <Badge variant="outline" className="capitalize text-xs">
+                            {block.type}
+                          </Badge>
+                          {block.notes && (
+                            <p className="text-xs mt-2">{block.notes}</p>
+                          )}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                }
+                
+                return blockContent;
               })}
             </div>
           </div>
         )}
       </Card>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
