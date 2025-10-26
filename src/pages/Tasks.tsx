@@ -6,54 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Target, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Task {
   id: string;
   title: string;
   description?: string;
-  project: string;
+  project?: string;
   priority: number;
   impact: number;
-  dueDate: string;
-  estMin: number;
-  tags: string[];
+  due_at?: string;
+  est_min?: number;
+  tags?: string[];
 }
-
-const mockTasks: Task[] = [
-  {
-    id: "1",
-    title: "Implement AI task decomposition",
-    description: "Create an edge function that uses Lovable AI to break down complex tasks into actionable steps with time estimates. Include MVP path and risk analysis.",
-    project: "ChronoPilot",
-    priority: 4,
-    impact: 5,
-    dueDate: "2025-10-27",
-    estMin: 90,
-    tags: ["deepwork", "ai"],
-  },
-  {
-    id: "2",
-    title: "Design timeline drag & drop",
-    description: "Implement interactive timeline with drag-and-drop functionality for rescheduling blocks. Support touch and mouse interactions.",
-    project: "ChronoPilot",
-    priority: 3,
-    impact: 4,
-    dueDate: "2025-10-28",
-    estMin: 120,
-    tags: ["ui", "deepwork"],
-  },
-  {
-    id: "3",
-    title: "Review Q4 team metrics",
-    description: "Analyze team performance metrics for Q4 and prepare summary for leadership review.",
-    project: "Work",
-    priority: 2,
-    impact: 3,
-    dueDate: "2025-10-29",
-    estMin: 45,
-    tags: ["ops"],
-  },
-];
 
 const Tasks = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -104,8 +70,15 @@ const Tasks = () => {
           </Card>
 
           {/* Task List */}
-          <div className="space-y-3">
-            {mockTasks.map((task) => (
+          {isLoading ? (
+            <div className="text-center py-8">Loading tasks...</div>
+          ) : tasks.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No tasks yet. Add your first task to get started!
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {tasks.map((task) => (
               <Card 
                 key={task.id} 
                 className="glass border-border p-5 hover:border-primary/30 transition-all cursor-pointer"
@@ -116,10 +89,12 @@ const Tasks = () => {
                     <div className="space-y-2 flex-1">
                       <h3 className="text-lg font-semibold">{task.title}</h3>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs">
-                          {task.project}
-                        </Badge>
-                        {task.tags.map((tag) => (
+                        {task.project && (
+                          <Badge variant="outline" className="text-xs">
+                            {task.project}
+                          </Badge>
+                        )}
+                        {task.tags?.map((tag) => (
                           <Badge key={tag} variant="secondary" className="text-xs bg-secondary/20">
                             {tag}
                           </Badge>
@@ -132,11 +107,11 @@ const Tasks = () => {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      {task.due_at ? new Date(task.due_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "No date"}
                     </div>
                     <div className="flex items-center gap-1">
                       <Zap className="w-4 h-4" />
-                      {task.estMin}m
+                      {task.est_min || 60}m
                     </div>
                     <div className="flex items-center gap-1">
                       <Target className="w-4 h-4" />
@@ -146,8 +121,9 @@ const Tasks = () => {
 
                 </div>
               </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Task Detail Dialog */}
           <TaskDetailDialog

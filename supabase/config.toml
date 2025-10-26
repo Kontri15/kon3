@@ -1,1 +1,7 @@
 project_id = "cbbgiicnamlxzpnmjsig"
+
+[functions.decompose-task]
+verify_jwt = false
+
+[functions.plan-my-day]
+verify_jwt = true

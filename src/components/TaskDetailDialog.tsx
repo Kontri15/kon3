@@ -13,12 +13,12 @@ interface Task {
   id: string;
   title: string;
   description?: string;
-  project: string;
+  project?: string;
   priority: number;
   impact: number;
-  dueDate: string;
-  estMin: number;
-  tags: string[];
+  due_at?: string;
+  est_min?: number;
+  tags?: string[];
 }
 
 interface TaskDetailDialogProps {
@@ -43,8 +43,8 @@ export const TaskDetailDialog = ({ task, open, onOpenChange }: TaskDetailDialogP
         <div className="space-y-4">
           {/* Meta Information */}
           <div className="flex flex-wrap gap-2">
-            <Badge variant="outline">{task.project}</Badge>
-            {task.tags.map((tag) => (
+            {task.project && <Badge variant="outline">{task.project}</Badge>}
+            {task.tags?.map((tag) => (
               <Badge key={tag} variant="secondary" className="bg-secondary/20">
                 {tag}
               </Badge>
@@ -55,16 +55,16 @@ export const TaskDetailDialog = ({ task, open, onOpenChange }: TaskDetailDialogP
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <span className="text-muted-foreground">
-                {new Date(task.dueDate).toLocaleDateString("en-US", { 
+                {task.due_at ? new Date(task.due_at).toLocaleDateString("en-US", { 
                   month: "short", 
                   day: "numeric",
                   year: "numeric" 
-                })}
+                }) : "No date"}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground">{task.estMin}m</span>
+              <span className="text-muted-foreground">{task.est_min || 60}m</span>
             </div>
             <div className="flex items-center gap-2">
               <Target className="w-4 h-4 text-muted-foreground" />
