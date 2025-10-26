@@ -1,10 +1,7 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Calendar, CheckSquare, Settings, BarChart3, Zap, LogOut } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { Calendar, CheckSquare, Settings, BarChart3, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
   { to: "/", icon: Calendar, label: "Today" },
@@ -15,14 +12,6 @@ const navItems = [
 
 export const Navigation = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    toast({ title: "Signed out successfully" });
-    navigate("/auth");
-  };
 
   return (
     <nav className="glass border border-border rounded-2xl p-2 mb-6">
@@ -60,15 +49,6 @@ export const Navigation = () => {
               </Link>
             );
           })}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleSignOut}
-            className="text-muted-foreground hover:text-foreground ml-2"
-            title="Sign Out"
-          >
-            <LogOut className="w-4 h-4" />
-          </Button>
         </div>
       </div>
     </nav>

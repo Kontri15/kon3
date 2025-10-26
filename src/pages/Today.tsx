@@ -15,7 +15,9 @@ const Today = () => {
   const handlePlanDay = async () => {
     setIsPlanning(true);
     try {
-      const { data, error } = await supabase.functions.invoke('plan-my-day');
+      const { data, error } = await supabase.functions.invoke('plan-my-day', {
+        body: {}
+      });
       
       if (error) throw error;
       

@@ -4,4 +4,4 @@ project_id = "cbbgiicnamlxzpnmjsig"
 verify_jwt = false
 
 [functions.plan-my-day]
-verify_jwt = true
+verify_jwt = false

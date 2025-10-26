@@ -67,29 +67,27 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Missing authorization header');
-    }
-
+    // Use service role key for single-user app (bypasses RLS)
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    // Get the first (only) user profile
+    const { data: profiles } = await supabase.from('profiles').select('id').limit(1);
+    if (!profiles || profiles.length === 0) {
+      throw new Error('No user profile found. Please create a profile first.');
+    }
+    const userId = profiles[0].id;
 
-    console.log('Planning day for user:', user.id);
+    console.log('Planning day for user:', userId);
 
     // Fetch all required data
     const [tasksRes, ritualsRes, eventsRes, profileRes, whoopRes] = await Promise.all([
-      supabase.from('tasks').select('*').eq('status', 'todo').eq('user_id', user.id),
-      supabase.from('rituals').select('*').eq('user_id', user.id),
-      supabase.from('events').select('*').eq('user_id', user.id).gte('start_at', new Date().toISOString()),
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('whoop_daily').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(1).single()
+      supabase.from('tasks').select('*').eq('status', 'todo').eq('user_id', userId),
+      supabase.from('rituals').select('*').eq('user_id', userId),
+      supabase.from('events').select('*').eq('user_id', userId).gte('start_at', new Date().toISOString()),
+      supabase.from('profiles').select('*').eq('id', userId).single(),
+      supabase.from('whoop_daily').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(1).single()
     ]);
 
     const tasks: Task[] = tasksRes.data || [];
@@ -210,7 +208,7 @@ Generate optimal schedule as JSON array.`;
     const todayEnd = new Date(today.setHours(23, 59, 59, 999)).toISOString();
     await supabase.from('blocks')
       .delete()
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('status', 'planned')
       .gte('start_at', todayStart)
       .lte('start_at', todayEnd);
@@ -218,7 +216,7 @@ Generate optimal schedule as JSON array.`;
     // Insert new blocks
     const blocksToInsert = blocks.map((block: any) => ({
       ...block,
-      user_id: user.id,
+      user_id: userId,
     }));
 
     const { error: insertError } = await supabase.from('blocks').insert(blocksToInsert);
