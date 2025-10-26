@@ -149,14 +149,15 @@ TRAINING & EXERCISE (6x per week):
 
 SPORTS SCHEDULE (HARD-FIXED):
 - Hockey team: HK Spišská Nová Ves
-- Games: Friday 17:00-20:00 (3 hours) or Sunday 16:00-19:00 (3 hours)
-- Add ±10min pre/post buffers for hockey games
+- Games: Use EXACT times from events table (e.g., 15:50-19:10)
+- CRITICAL: Display hockey blocks using the EXACT start_at and end_at times from events - do NOT round to nearest hour
+- Add ±10min pre/post buffers for hockey games if not already included
 - Verify schedule daily from feed
 
 NUTRITION:
-- Meal pattern: base (rice, potatoes, fries, sometimes pasta) + main (salmon, steak, chicken, turkey, tuna, legumes)
-- Lunch: 12:00-12:45 (FIXED)
-- Rotation: 3 lunches, 2 dinners
+- Lunch: 12:00-12:45 (FIXED) - base (rice, potatoes, fries, pasta) + main (salmon, steak, chicken, turkey, tuna, legumes)
+- Dinner: simple meals - bread with ham, bread with eggs, or yogurt with cereals
+- Hockey game days: eat dinner BEFORE or DURING hockey game (not after gym)
 
 SUPPLEMENTS:
 - With dinner: Omega-3, Vitamin D3
@@ -187,8 +188,9 @@ SCHEDULING RULES (CRITICAL - USE EXACT TIMES):
 4. Cluster by tags/projects to minimize context switching
 5. Breaks: use "buffer" type for 5-10min rest every 50-90min
 6. Meals: 
-   - Lunch: 12:00-12:45 EXACTLY (use "meal" type, MUST specify actual meal from rotation)
-   - Dinner: evening (use "meal" type, specify actual meal)
+   - Lunch: 12:00-12:45 EXACTLY (use "meal" type, MUST specify: base + main e.g. "Rice with salmon")
+   - Dinner: simple meal (use "meal" type, specify: "Bread with ham", "Bread with eggs", or "Yogurt with cereals")
+   - Hockey days: schedule dinner BEFORE/DURING hockey game, NOT after gym
    - NO breakfast
 7. Exercise (use "ritual" type for all): 
    - Running: START at 07:00 weekdays / 07:30 weekends, 30min duration
@@ -196,8 +198,8 @@ SCHEDULING RULES (CRITICAL - USE EXACT TIMES):
    - Gym: 17:00-18:30 Mon-Sat per PPL-Active-PPL cycle (5min commute)
    - Football: Thu 17:00-18:30 (optional, replaces gym as Active)
    - Swimming: 17:00-18:30 on Active/Rest days (prefer over sauna)
-   - Hockey: Fri 17:00-20:00 or Sun 16:00-19:00 (3 hours total with buffers)
-   - Sunday: If hockey 16:00-19:00, gym after at 18:30-19:30
+   - Hockey: Use EXACT times from events (e.g., 15:50-19:10) - do NOT round to hour
+   - Sunday: If hockey scheduled, gym after at 18:30-19:30
    - Yoga: 10-15min before bed
    - Meditation: 10min before bed
 8. Supplements: 
@@ -260,7 +262,8 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
 - Lunch (12:00-12:45 EXACTLY) - MUST specify meal: "[base] with [main]" e.g. "Rice with salmon"
 - Afternoon work/projects
 - Exercise time (gym/football/swimming per schedule)
-- Dinner (specify meal + supplements on training days)
+- Dinner (simple: "Bread with ham", "Bread with eggs", or "Yogurt with cereals" + supplements on training days)
+- Hockey days: dinner before/during game, NOT after
 - Evening wind-down (yoga + meditation)
 - Bedtime routine (21:30-22:00 EXACTLY)`;
 
