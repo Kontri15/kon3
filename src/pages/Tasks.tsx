@@ -20,6 +20,8 @@ interface Task {
   impact: number;
   due_at?: string;
   est_min?: number;
+  actual_min?: number;
+  status?: string;
   tags?: string[];
 }
 
