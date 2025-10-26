@@ -19,22 +19,24 @@ interface TimeBlock {
 }
 
 export const TimelineView = () => {
-  const hours = Array.from({ length: 16 }, (_, i) => i + 6); // 6 AM to 10 PM
+  const hours = Array.from({ length: 24 }, (_, i) => (i + 6) % 24); // 6 AM to 6 AM next day
   const PIXELS_PER_MINUTE = 1; // 60px per hour
   const TIMELINE_START_HOUR = 6; // 6 AM
   
   const { data: blocks = [], isLoading } = useQuery({
     queryKey: ['blocks', new Date().toDateString()],
     queryFn: async () => {
-      const today = new Date();
-      const todayStart = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-      const todayEnd = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+      const now = new Date();
+      // Start at 6 AM today
+      const queryStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 0, 0, 0);
+      // End at 6 AM tomorrow (24 hours later)
+      const queryEndTime = new Date(queryStartTime.getTime() + 24 * 60 * 60 * 1000);
       
       const { data, error } = await supabase
         .from('blocks')
         .select('*')
-        .gte('start_at', todayStart)
-        .lte('start_at', todayEnd)
+        .gte('start_at', queryStartTime.toISOString())
+        .lt('start_at', queryEndTime.toISOString())
         .order('start_at');
       
       if (error) throw error;
@@ -47,7 +49,14 @@ export const TimelineView = () => {
     const start = parseISO(block.start_at);
     const end = parseISO(block.end_at);
     const durationMinutes = (end.getTime() - start.getTime()) / 60000;
-    const startMinutes = start.getHours() * 60 + start.getMinutes();
+    
+    let startMinutes = start.getHours() * 60 + start.getMinutes();
+    
+    // If block starts before 6 AM (midnight to 5:59 AM), it's "next day" - add 24 hours
+    if (start.getHours() < TIMELINE_START_HOUR) {
+      startMinutes += 24 * 60;
+    }
+    
     const timelineStartMinutes = TIMELINE_START_HOUR * 60;
     const topPosition = (startMinutes - timelineStartMinutes) * PIXELS_PER_MINUTE;
     const height = Math.max(durationMinutes * PIXELS_PER_MINUTE, 30); // Minimum 30px height
@@ -128,7 +137,7 @@ export const TimelineView = () => {
             </div>
             
             {/* Timeline container with blocks */}
-            <div className="flex-1 relative" style={{ height: `${16 * 60}px` }}>
+            <div className="flex-1 relative" style={{ height: `${24 * 60}px` }}>
               {/* Hour grid lines */}
               {hours.map((hour, index) => (
                 <div
