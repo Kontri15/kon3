@@ -188,12 +188,12 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.7,
+        response_format: { type: "json_object" },
       }),
     });
 
@@ -205,13 +205,24 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
 
     const aiData = await aiResponse.json();
     let generatedText = aiData.choices[0].message.content;
-    console.log('AI response received');
+    console.log('AI raw response:', generatedText.substring(0, 200));
 
-    // Clean markdown if present
-    generatedText = generatedText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    // Clean markdown and control characters
+    generatedText = generatedText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+      .trim();
 
-    const blocks = JSON.parse(generatedText);
-    console.log(`Generated ${blocks.length} blocks`);
+    let blocks;
+    try {
+      blocks = JSON.parse(generatedText);
+      console.log(`Generated ${blocks.length} blocks`);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Cleaned response:', generatedText.substring(0, 500));
+      throw new Error('Failed to parse AI response as JSON');
+    }
 
     // Delete existing planned blocks for today
     const todayStart = new Date(today.setHours(0, 0, 0, 0)).toISOString();
