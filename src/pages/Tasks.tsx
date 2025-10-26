@@ -59,6 +59,20 @@ const Tasks = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  const { data: tasks = [], isLoading } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('status', 'todo')
+        .order('priority', { ascending: false });
+      
+      if (error) throw error;
+      return data as Task[];
+    },
+  });
+
   const getPriorityColor = (priority: number) => {
     if (priority >= 4) return "bg-destructive/20 text-destructive border-destructive/30";
     if (priority >= 3) return "bg-warning/20 text-warning border-warning/30";
