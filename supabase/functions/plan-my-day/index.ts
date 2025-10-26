@@ -321,6 +321,39 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
       throw new Error('Failed to parse AI response as JSON');
     }
 
+    // Post-processing validation and fixes
+    blocks = blocks.map((block: any) => {
+      const startDate = new Date(block.start_at);
+      const endDate = new Date(block.end_at);
+      const durationMs = endDate.getTime() - startDate.getTime();
+      const durationHours = durationMs / (1000 * 60 * 60);
+      
+      // Fix 0-duration or negative duration blocks
+      if (durationMs <= 0) {
+        console.warn(`Fixing 0-duration block: "${block.title}" (${block.start_at} - ${block.end_at})`);
+        // Add default 30min duration
+        endDate.setTime(startDate.getTime() + 30 * 60 * 1000);
+        block.end_at = endDate.toISOString();
+      }
+      
+      // Special handling for sleep blocks - must span overnight (~7-8 hours)
+      if (block.type === 'sleep' || block.title.toLowerCase().includes('sleep') || block.title.toLowerCase().includes('lights')) {
+        if (durationHours < 6 || durationHours > 10) {
+          console.warn(`Fixing sleep block duration: "${block.title}" (was ${durationHours.toFixed(1)}h)`);
+          // Sleep should be 8 hours and span to next day
+          // Expected pattern: 22:00 today -> 06:00 tomorrow
+          const sleepStart = new Date(block.start_at);
+          const sleepEnd = new Date(sleepStart);
+          sleepEnd.setDate(sleepEnd.getDate() + 1); // Next day
+          sleepEnd.setHours(6, 0, 0, 0); // 06:00
+          block.end_at = sleepEnd.toISOString();
+          console.log(`Fixed to: ${block.start_at} -> ${block.end_at}`);
+        }
+      }
+      
+      return block;
+    });
+
     // Delete existing planned blocks for today
     const todayStart = new Date(today.setHours(0, 0, 0, 0)).toISOString();
     const todayEnd = new Date(today.setHours(23, 59, 59, 999)).toISOString();
