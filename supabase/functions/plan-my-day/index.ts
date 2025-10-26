@@ -113,33 +113,81 @@ Deno.serve(async (req) => {
     const isWorkday = today.getDay() >= 1 && today.getDay() <= 5;
     const isFriday = today.getDay() === 5;
 
-    const systemPrompt = `You are ChronoPilot's scheduling engine. Plan a day from 06:00-22:00 for ${today.toISOString().split('T')[0]} (${dayOfWeek}).
+    const systemPrompt = `You are ChronoPilot's scheduling engine. Plan a personalized day for ${today.toISOString().split('T')[0]} (${dayOfWeek}) in Europe/Bratislava timezone.
 
-HARD CONSTRAINTS:
-- Deep work block: 06:10-08:00 (build_mode=${profile.build_mode} → ${profile.build_mode ? 'SACRED, never move' : 'flexible'})
-- Office hours: ${isWorkday ? `arrive ${profile.work_arrival}, leave ${profile.work_leave}` : 'no office'} ${isFriday ? '(Friday = home office)' : ''}
-- Bedtime routine: starts ${profile.prebed_start}, sleep by ${profile.bedtime}
-- All hard-fixed events MUST be scheduled exactly as given
-- Respect min_block_min for tasks (don't fragment)
-- Add buffers for hard-fixed events (pre_buffer_min/post_buffer_min)
+USER PROFILE & DAILY ROUTINE:
+- Wake time: 06:00
+- Build mode focus (SACRED): 06:10-08:00 - work on ChronoPilot app (highest priority cognitive work)
+- Lunch window: 12:00-12:45 (FIXED)
+- Pre-bed routine: starts 21:30
+- Lights out: 22:00
+- Sleep goal: 7-8 hours (minimum 6.5h), optimize for quality
+
+WORK SCHEDULE:
+- Mon-Thu: On-site in office (arrive 08:30, leave 16:30)
+- Fri: Home office
+- Current priority: work on ChronoPilot app during morning build mode
+- Meetings: few; sync from Outlook calendar
+
+TRAINING & EXERCISE (6x per week):
+- Gym split cycle: Push → Pull → Legs → Active (swim/sauna/walk) → Push → Pull → Legs
+- Typical time: 17:00-18:00 or 18:30
+- Progressive overload: +10% weight after 2 successful consecutive weeks; -5% if missed twice
+- Football: Thursdays occasionally (treat as Active day, shift PPL accordingly)
+- Running: 07:00 weekdays, 07:30 weekends (optional/suppressed during build_mode mornings)
+- Yoga: 10-15min before bed
+- Meditation: 10min before bed
+
+SPORTS SCHEDULE (HARD-FIXED):
+- Hockey team: HK Spišská Nová Ves
+- Games: Friday 17:30 or Sunday 16:00
+- Add ±10min pre/post buffers for hockey games
+- Verify schedule daily from feed
+
+NUTRITION:
+- Meal pattern: base (rice, potatoes, fries, sometimes pasta) + main (salmon, steak, chicken, turkey, tuna, legumes)
+- Lunch: 12:00-12:45 (FIXED)
+- Rotation: 3 lunches, 2 dinners
+
+SUPPLEMENTS:
+- With dinner: Omega-3, Vitamin D3
+- 90min before sleep: Magnesium, Ashwagandha
+- Adjust pre-sleep timing dynamically using WHOOP predicted/last sleep
+
+LOCATIONS:
+- Default: Bratislava
+- Secondary: Spišská Nová Ves (roughly once per month)
+- Upcoming trip: Week of 2025-11-01 in SNV
+
+PLANNING PREFERENCES:
+- Heavy tasks first (frontload cognitive work)
+- Build mode morning block 06:10-08:00 is SACRED
+- Minimize context switching (cluster by tags/projects)
+- Breaks: 5-10min every 50-90min
+- Day buffer: 10-15% unscheduled time
+- Hard-fixed events ALWAYS respected
 
 SCHEDULING RULES:
-1. Pack hard-fixed events first (events + rituals with hard_fixed=true)
-2. Heaviest cognitive tasks during deep work (06:10-08:00)
+1. Pack hard-fixed events first (events + rituals with hard_fixed=true, hockey games)
+2. ChronoPilot work MUST occupy 06:10-08:00 (highest priority)
 3. Score tasks: (impact * 3) + (priority * 2) + (urgency_score) - (energy_mismatch_penalty)
-4. Cluster by tags/projects (minimize context switching)
-5. Breaks: use "buffer" type for 5-10min rest periods every 50-90min of focused work
-6. Meals: use "meal" type for breakfast/lunch/dinner
-7. Sleep: use "sleep" type for bedtime routine and actual sleep
-8. Day buffer: leave 10-15% unscheduled
-9. If WHOOP recovery <40%, prioritize active recovery over intense work
-10. Respect location constraints (home vs office vs any)
-11. Honor earliest_start, hard_window_start, hard_window_end if present
+4. Cluster by tags/projects to minimize context switching
+5. Breaks: use "buffer" type for 5-10min rest every 50-90min
+6. Meals: use "meal" type for breakfast (post-wake), lunch (12:00-12:45), dinner
+7. Exercise: gym 17:00-18:30 following PPL cycle, yoga/meditation before bed
+8. Supplements: schedule with dinner and 90min before sleep
+9. Sleep: bedtime routine at 21:30, sleep by 22:00
+10. Day buffer: leave 10-15% unscheduled
+11. If WHOOP recovery <40%, prioritize active recovery over intense work
+12. Respect location constraints (home vs office vs any)
+13. Honor earliest_start, hard_window_start, hard_window_end if present
+14. Commute time on Mon-Thu: factor in travel to/from office
 
 WHOOP DATA TODAY:
 - Recovery: ${whoop.recovery_pct || 'N/A'}%
 - HRV: ${whoop.hrv_ms || 'N/A'}ms
 - RHR: ${whoop.rhr_bpm || 'N/A'}bpm
+${whoop.recovery_pct && whoop.recovery_pct < 40 ? '\n⚠️ LOW RECOVERY - prioritize active recovery, reduce intensity' : ''}
 
 OUTPUT FORMAT:
 Return ONLY a JSON array of blocks (no markdown, no explanation):
@@ -148,7 +196,7 @@ Return ONLY a JSON array of blocks (no markdown, no explanation):
     "title": "Block title",
     "start_at": "2025-10-26T06:10:00Z",
     "end_at": "2025-10-26T08:00:00Z",
-    "type": "task" | "ritual" | "event" | "meal" | "sleep" | "buffer" | "commute",
+    "type": "task" | "ritual" | "event" | "meal" | "sleep" | "buffer" | "commute" | "exercise",
     "status": "planned",
     "task_id": "uuid or null",
     "ritual_id": "uuid or null",
@@ -156,7 +204,7 @@ Return ONLY a JSON array of blocks (no markdown, no explanation):
   }
 ]
 
-Use ISO 8601 timestamps. Ensure no overlaps. Fill the entire day 06:00-22:00.`;
+Use ISO 8601 timestamps in Europe/Bratislava timezone. Ensure no overlaps. Fill the entire day 06:00-22:00.`;
 
     const userPrompt = `
 TASKS (${tasks.length}):
