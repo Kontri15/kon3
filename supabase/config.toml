@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.plan-my-day]
 verify_jwt = false
+
+[functions.parse-task]
+verify_jwt = false

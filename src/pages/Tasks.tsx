@@ -3,11 +3,12 @@ import { Navigation } from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Target, Zap } from "lucide-react";
+import { Plus, Calendar, Target, Zap, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Task {
   id: string;
@@ -24,6 +25,10 @@ interface Task {
 const Tasks = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [taskInput, setTaskInput] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['tasks'],
@@ -50,23 +55,83 @@ const Tasks = () => {
     setDialogOpen(true);
   };
 
+  const handleCreateTask = async () => {
+    if (!taskInput.trim()) return;
+
+    setIsCreating(true);
+    try {
+      // Parse task with AI
+      const { data: parseData, error: parseError } = await supabase.functions.invoke('parse-task', {
+        body: { input: taskInput }
+      });
+
+      if (parseError) throw parseError;
+
+      // Insert task into database
+      const { error: insertError } = await supabase
+        .from('tasks')
+        .insert([parseData.task]);
+
+      if (insertError) throw insertError;
+
+      toast({
+        title: "Task created!",
+        description: `"${parseData.task.title}" has been added to your tasks.`,
+      });
+
+      setTaskInput("");
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast({
+        title: "Failed to create task",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleCreateTask();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
         <Navigation />
 
         <div className="space-y-6 animate-fade-in">
-          {/* Quick Add */}
+          {/* Quick Add with AI */}
           <Card className="glass border-border p-4">
             <div className="flex gap-2">
               <Input
-                placeholder="/task Build edge function [due:2025-10-27] [min:90] [tag:deepwork]"
+                placeholder="Write your task in plain English... e.g. 'Build authentication by Friday, will take 2 hours'"
                 className="flex-1 bg-surface border-border"
+                value={taskInput}
+                onChange={(e) => setTaskInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={isCreating}
               />
-              <Button size="icon">
-                <Plus className="w-4 h-4" />
+              <Button 
+                size="icon" 
+                onClick={handleCreateTask}
+                disabled={!taskInput.trim() || isCreating}
+              >
+                {isCreating ? (
+                  <Sparkles className="w-4 h-4 animate-pulse" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              ✨ AI will extract priority, duration, tags, and due date automatically
+            </p>
           </Card>
 
           {/* Task List */}
