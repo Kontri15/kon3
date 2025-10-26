@@ -1,13 +1,16 @@
+import { useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Target, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 
 interface Task {
   id: string;
   title: string;
+  description?: string;
   project: string;
   priority: number;
   impact: number;
@@ -20,6 +23,7 @@ const mockTasks: Task[] = [
   {
     id: "1",
     title: "Implement AI task decomposition",
+    description: "Create an edge function that uses Lovable AI to break down complex tasks into actionable steps with time estimates. Include MVP path and risk analysis.",
     project: "ChronoPilot",
     priority: 4,
     impact: 5,
@@ -30,6 +34,7 @@ const mockTasks: Task[] = [
   {
     id: "2",
     title: "Design timeline drag & drop",
+    description: "Implement interactive timeline with drag-and-drop functionality for rescheduling blocks. Support touch and mouse interactions.",
     project: "ChronoPilot",
     priority: 3,
     impact: 4,
@@ -40,6 +45,7 @@ const mockTasks: Task[] = [
   {
     id: "3",
     title: "Review Q4 team metrics",
+    description: "Analyze team performance metrics for Q4 and prepare summary for leadership review.",
     project: "Work",
     priority: 2,
     impact: 3,
@@ -50,10 +56,18 @@ const mockTasks: Task[] = [
 ];
 
 const Tasks = () => {
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   const getPriorityColor = (priority: number) => {
     if (priority >= 4) return "bg-destructive/20 text-destructive border-destructive/30";
     if (priority >= 3) return "bg-warning/20 text-warning border-warning/30";
     return "bg-info/20 text-info border-info/30";
+  };
+
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setDialogOpen(true);
   };
 
   return (
@@ -78,7 +92,11 @@ const Tasks = () => {
           {/* Task List */}
           <div className="space-y-3">
             {mockTasks.map((task) => (
-              <Card key={task.id} className="glass border-border p-5 hover:border-primary/30 transition-all cursor-pointer">
+              <Card 
+                key={task.id} 
+                className="glass border-border p-5 hover:border-primary/30 transition-all cursor-pointer"
+                onClick={() => handleTaskClick(task)}
+              >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
                     <div className="space-y-2 flex-1">
@@ -112,18 +130,17 @@ const Tasks = () => {
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      Decompose
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      Schedule
-                    </Button>
-                  </div>
                 </div>
               </Card>
             ))}
           </div>
+
+          {/* Task Detail Dialog */}
+          <TaskDetailDialog
+            task={selectedTask}
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+          />
         </div>
       </div>
     </div>
