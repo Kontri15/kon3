@@ -77,28 +77,37 @@ Deno.serve(async (req) => {
     console.log('Planning day (single-user mode)');
 
     // Fetch all required data (all optional - will work with empty DB)
-    const [tasksRes, ritualsRes, eventsRes] = await Promise.all([
+    const [tasksRes, ritualsRes, eventsRes, profileRes, whoopRes] = await Promise.all([
       supabase.from('tasks').select('*').eq('status', 'todo'),
       supabase.from('rituals').select('*'),
-      supabase.from('events').select('*').gte('start_at', new Date().toISOString())
+      supabase.from('events').select('*').gte('start_at', new Date().toISOString()),
+      supabase.from('profiles').select('*').single(),
+      supabase.from('whoop_daily').select('*').eq('date', new Date().toISOString().split('T')[0]).single()
     ]);
 
     const tasks: Task[] = tasksRes.data || [];
     const rituals: Ritual[] = ritualsRes.data || [];
     const events: Event[] = eventsRes.data || [];
     
-    // Use sensible defaults for profile
+    // Use database profile or sensible defaults
+    const profileData = profileRes.data;
     const profile: Profile = {
-      build_mode: true,
-      home_city: 'BA',
-      work_arrival: '08:30:00',
-      work_leave: '16:30:00',
-      friday_home_office: true,
-      bedtime: '22:00:00',
-      prebed_start: '21:30:00'
+      build_mode: profileData?.build_mode ?? true,
+      home_city: profileData?.home_city ?? 'BA',
+      work_arrival: profileData?.work_arrival ?? '08:30:00',
+      work_leave: profileData?.work_leave ?? '16:30:00',
+      friday_home_office: profileData?.friday_home_office ?? true,
+      bedtime: profileData?.bedtime ?? '22:00:00',
+      prebed_start: profileData?.prebed_start ?? '21:30:00'
     };
     
-    const whoop: WhoopData = {};
+    const whoopData = whoopRes.data;
+    const whoop: WhoopData = {
+      recovery_pct: whoopData?.recovery_pct,
+      hrv_ms: whoopData?.hrv_ms,
+      rhr_bpm: whoopData?.rhr_bpm,
+      sleep_perf_pct: whoopData?.sleep_perf_pct
+    };
 
     console.log(`Loaded: ${tasks.length} tasks, ${rituals.length} rituals, ${events.length} events`);
     
@@ -113,11 +122,23 @@ Deno.serve(async (req) => {
     const isWorkday = today.getDay() >= 1 && today.getDay() <= 5;
     const isFriday = today.getDay() === 5;
 
+    // Calculate wake time from bedtime and sleep target
+    const bedtimeHours = parseInt(profile.bedtime?.split(':')[0] || '22');
+    const bedtimeMinutes = parseInt(profile.bedtime?.split(':')[1] || '0');
+    const prebedHours = parseInt(profile.prebed_start?.split(':')[0] || '21');
+    const prebedMinutes = parseInt(profile.prebed_start?.split(':')[1] || '30');
+    
+    // Wake time is bedtime + 8 hours (default sleep target)
+    const wakeHours = (bedtimeHours + 8) % 24;
+    const wakeTime = `${String(wakeHours).padStart(2, '0')}:00`;
+    const buildModeStart = `${String(wakeHours).padStart(2, '0')}:10`;
+    const buildModeEnd = `${String((wakeHours + 2) % 24).padStart(2, '0')}:00`;
+    
     const systemPrompt = `You are ChronoPilot's scheduling engine. Plan a personalized day for ${today.toISOString().split('T')[0]} (${dayOfWeek}) in Europe/Bratislava timezone.
 
 USER PROFILE & DAILY ROUTINE (ALL TIMES IN Europe/Bratislava timezone):
-- Wake time: 06:00 EXACTLY
-- Build mode focus (SACRED): 06:10-08:00 EXACTLY - highest priority cognitive/deep work
+- Wake time: ${wakeTime} EXACTLY
+- Build mode focus (SACRED): ${buildModeStart}-${buildModeEnd} EXACTLY - highest priority cognitive/deep work
   * Prioritize based on tasks: urgent PS Digital work > ChronoPilot > personal projects/learning
   * Can be interrupted by journaling block (06:10-06:40, 30min) if important project/decision requires it
 - Running: START at 07:00 weekdays, 07:30 weekends (30min duration, schedule when possible)
@@ -126,8 +147,8 @@ USER PROFILE & DAILY ROUTINE (ALL TIMES IN Europe/Bratislava timezone):
 - Lunch: 12:00-12:45 EXACTLY (45min FIXED window)
   * MUST specify actual meal from rotation: base (rice/potatoes/fries/pasta) + main (salmon/steak/chicken/turkey/tuna/legumes)
   * Example: "Lunch: Rice with grilled salmon" or "Lunch: Potatoes with chicken breast"
-- Pre-bed routine: starts 21:30 EXACTLY
-- Lights out: 22:00 EXACTLY
+- Pre-bed routine: starts ${profile.prebed_start} EXACTLY
+- Lights out: ${profile.bedtime} EXACTLY
 - Sleep goal: 7-8 hours (minimum 6.5h), optimize for quality
 
 WORK SCHEDULE:
@@ -206,10 +227,10 @@ SCHEDULING RULES (CRITICAL - USE EXACT TIMES):
 9. Supplements: 
    - Dinner: Omega-3, D3, Creatine (on training days)
    - 90min before sleep: Magnesium, Ashwagandha
-10. Sleep: MUST be a continuous block from bedtime (22:00) to wake time (06:00 next day)
+10. Sleep: MUST be a continuous block from bedtime (${profile.bedtime}) to wake time (${wakeTime} next day)
     - Use type "sleep" for the main sleep block
-    - Pre-bed routine (21:30-22:00) should be separate with type "ritual"
-    - Sleep block format: start_at: "2025-10-26T22:00:00+01:00", end_at: "2025-10-27T06:00:00+01:00"
+    - Pre-bed routine (${profile.prebed_start}-${profile.bedtime}) should be separate with type "ritual"
+    - Sleep block format: start_at: "2025-10-26T${profile.bedtime}:00+01:00", end_at: "2025-10-27T${wakeTime}:00+01:00"
 11. Day buffer: leave 10-15% unscheduled
 12. If WHOOP recovery <40%, prioritize active recovery over intense work
 13. Respect location constraints (home vs office vs any)
@@ -248,10 +269,10 @@ CRITICAL TIMING REQUIREMENTS:
 - Use ISO 8601 format with EXPLICIT timezone offset: "2025-10-26T07:00:00+01:00" (NOT "Z", NOT "06:00:00+00:00")
 - TIMEZONE OFFSET: Always use +01:00 for winter (Oct-Mar) or +02:00 for summer (Apr-Sep)
 - DO NOT shift times - if prompt says 07:00 local time, write "2025-10-26T07:00:00+01:00"
-- Example: Wake at 06:00 = "2025-10-26T06:00:00+01:00", NOT "2025-10-26T05:00:00Z"
-- Sleep MUST span overnight: "2025-10-26T22:00:00+01:00" to "2025-10-27T06:00:00+01:00"
+- Example: Wake at ${wakeTime} = "2025-10-26T${wakeTime}:00+01:00", NOT "2025-10-26T${String(wakeHours - 1).padStart(2, '0')}:00:00Z"
+- Sleep MUST span overnight: "2025-10-26T${profile.bedtime}:00+01:00" to "2025-10-27T${wakeTime}:00+01:00"
 - Ensure no overlaps between blocks
-- Fill the entire day 06:00-22:00 with planned activities`;
+- Fill the entire day ${wakeTime}-${profile.bedtime} with planned activities`;
 
     const userPrompt = `
 TASKS (${tasks.length}):
@@ -264,7 +285,7 @@ EVENTS (${events.length}):
 ${events.length > 0 ? events.map(e => `- "${e.title}" [${e.start_at} to ${e.end_at}, ${e.hard_fixed ? 'HARD-FIXED' : 'flexible'}]`).join('\n') : '(No events)'}
 
 Generate optimal schedule as JSON array. If no tasks/rituals exist, create a productive template day with:
-- Deep work block (06:10-08:00 EXACTLY)
+- Deep work block (${buildModeStart}-${buildModeEnd} EXACTLY)
 - Running (START 07:00 weekdays / 07:30 weekends, 30min)
 - Shower (START 07:40 weekdays / 08:00 weekends, 10min)
 - Focused work sessions with breaks
@@ -274,7 +295,7 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
 - Dinner (simple: "Bread with ham", "Bread with eggs", or "Yogurt with cereals" + supplements on training days)
 - Hockey days: dinner before/during game, NOT after
 - Evening wind-down (yoga + meditation)
-- Bedtime routine (21:30-22:00 EXACTLY)`;
+- Bedtime routine (${profile.prebed_start}-${profile.bedtime} EXACTLY)`;
 
 
     console.log('Calling Lovable AI...');
@@ -382,15 +403,15 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
       const sleepEnd = new Date(sleepBlock.end_at);
       const sleepDurationHours = (sleepEnd.getTime() - sleepStart.getTime()) / (1000 * 60 * 60);
       
-      // If sleep duration is wrong, fix it to be 8 hours from 22:00 to 06:00 next day
+      // If sleep duration is wrong, fix it using profile settings
       if (sleepDurationHours < 6 || sleepDurationHours > 10) {
         console.warn(`Fixing sleep block duration: "${sleepBlock.title}" (was ${sleepDurationHours.toFixed(1)}h)`);
         const sleepStartDate = new Date(today);
-        sleepStartDate.setHours(22, 0, 0, 0);
+        sleepStartDate.setHours(bedtimeHours, bedtimeMinutes, 0, 0);
         
         const sleepEndDate = new Date(sleepStartDate);
         sleepEndDate.setDate(sleepEndDate.getDate() + 1);
-        sleepEndDate.setHours(6, 0, 0, 0);
+        sleepEndDate.setHours(wakeHours, 0, 0, 0);
         
         sleepBlock.start_at = formatWithTimezoneOffset(sleepStartDate);
         sleepBlock.end_at = formatWithTimezoneOffset(sleepEndDate);
@@ -401,10 +422,10 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
     if (!sleepBlock) {
       console.warn('No sleep block found - adding default sleep block');
       const sleepStartDate = new Date(today);
-      sleepStartDate.setHours(22, 0, 0, 0);
+      sleepStartDate.setHours(bedtimeHours, bedtimeMinutes, 0, 0);
       const sleepEndDate = new Date(sleepStartDate);
       sleepEndDate.setDate(sleepEndDate.getDate() + 1);
-      sleepEndDate.setHours(6, 0, 0, 0);
+      sleepEndDate.setHours(wakeHours, 0, 0, 0);
       
       blocks.push({
         title: 'Sleep',
