@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Target, Zap, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
+import { TaskCreateDialog } from "@/components/TaskCreateDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +25,8 @@ interface Task {
 
 const Tasks = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [taskInput, setTaskInput] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
@@ -52,7 +54,7 @@ const Tasks = () => {
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
-    setDialogOpen(true);
+    setDetailDialogOpen(true);
   };
 
   const handleCreateTask = async () => {
@@ -106,33 +108,46 @@ const Tasks = () => {
         <Navigation />
 
         <div className="space-y-6 animate-fade-in">
-          {/* Quick Add with AI */}
-          <Card className="glass border-border p-4">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Write your task in plain English... e.g. 'Build authentication by Friday, will take 2 hours'"
-                className="flex-1 bg-surface border-border"
-                value={taskInput}
-                onChange={(e) => setTaskInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isCreating}
-              />
-              <Button 
-                size="icon" 
-                onClick={handleCreateTask}
-                disabled={!taskInput.trim() || isCreating}
-              >
-                {isCreating ? (
-                  <Sparkles className="w-4 h-4 animate-pulse" />
-                ) : (
-                  <Plus className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              ✨ AI will extract priority, duration, tags, and due date automatically
-            </p>
-          </Card>
+          {/* Create Task Options */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Manual Task Creation */}
+            <Card className="glass border-border p-4 hover:border-primary/30 transition-all cursor-pointer" onClick={() => setCreateDialogOpen(true)}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Plus className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Create Task</h3>
+                  <p className="text-xs text-muted-foreground">Fill in all details manually</p>
+                </div>
+              </div>
+            </Card>
+
+            {/* AI Quick Add */}
+            <Card className="glass border-border p-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Quick add with AI... e.g. 'Build auth by Friday, 2 hours'"
+                  className="flex-1 bg-surface border-border text-sm"
+                  value={taskInput}
+                  onChange={(e) => setTaskInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  disabled={isCreating}
+                />
+                <Button 
+                  size="icon" 
+                  onClick={handleCreateTask}
+                  disabled={!taskInput.trim() || isCreating}
+                >
+                  {isCreating ? (
+                    <Sparkles className="w-4 h-4 animate-pulse" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            </Card>
+          </div>
 
           {/* Task List */}
           {isLoading ? (
@@ -190,11 +205,15 @@ const Tasks = () => {
             </div>
           )}
 
-          {/* Task Detail Dialog */}
+          {/* Dialogs */}
+          <TaskCreateDialog
+            open={createDialogOpen}
+            onOpenChange={setCreateDialogOpen}
+          />
           <TaskDetailDialog
             task={selectedTask}
-            open={dialogOpen}
-            onOpenChange={setDialogOpen}
+            open={detailDialogOpen}
+            onOpenChange={setDetailDialogOpen}
           />
         </div>
       </div>

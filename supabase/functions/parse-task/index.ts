@@ -140,6 +140,7 @@ Output: {
 
     // Set defaults for missing fields
     const task = {
+      user_id: '00000000-0000-0000-0000-000000000001', // Single-user app
       title: parsedTask.title,
       description: parsedTask.description || null,
       priority: parsedTask.priority || 2,
@@ -150,7 +151,7 @@ Output: {
       tags: parsedTask.tags || [],
       project: parsedTask.project || null,
       due_at: parsedTask.due_at || null,
-      location: parsedTask.location || 'any',
+      location: parsedTask.location?.toUpperCase() || 'ANY',
       status: 'todo',
       biz_or_personal: parsedTask.project?.toLowerCase().includes('ps digital') ? 'biz' : 'personal'
     };
