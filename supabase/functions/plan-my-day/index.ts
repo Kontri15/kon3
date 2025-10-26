@@ -117,9 +117,12 @@ Deno.serve(async (req) => {
 
 USER PROFILE & DAILY ROUTINE:
 - Wake time: 06:00
-- Build mode focus (SACRED): 06:10-08:00 - highest priority cognitive/deep work (could be ChronoPilot app, personal projects, learning, etc.)
-- Running: 07:00 weekdays, 07:30 weekends (should be scheduled when possible)
+- Build mode focus (SACRED): 06:10-08:00 - highest priority cognitive/deep work
+  * Prioritize based on tasks: urgent PS Digital work > ChronoPilot > personal projects/learning
+  * Can be interrupted by journaling block (06:10-06:40, 30min) if important project/decision requires it
+- Running: 07:00 weekdays, 07:30 weekends (schedule when possible)
 - Shower: 07:40 weekdays, 08:00 weekends
+- Breakfast: NONE (user does not eat breakfast)
 - Lunch window: 12:00-12:45 (FIXED)
 - Pre-bed routine: starts 21:30
 - Lights out: 22:00
@@ -133,9 +136,11 @@ WORK SCHEDULE:
 
 TRAINING & EXERCISE (6x per week):
 - Gym split cycle: Push → Pull → Legs → Active (swim/sauna/walk) → Push → Pull → Legs
-- Typical time: 17:00-18:00 or 18:30
+- Typical time: 17:00-18:00/18:30 Mon-Sat
 - Progressive overload: +10% weight after 2 successful consecutive weeks; -5% if missed twice
-- Football: Thursdays occasionally (treat as Active day, shift PPL accordingly)
+- Football: Thursday variable time (17:00-18:30 window), optional, can replace gym as Active day
+- Swimming: 17:00-18:30, use on Active/Rest days, prefer over sauna for cost reasons
+- Sunday special: If hockey at 16:00, gym after hockey at 18:30-19:30
 - Running: Already covered in daily routine above
 - Yoga: 10-15min before bed
 - Meditation: 10min before bed
@@ -153,6 +158,7 @@ NUTRITION:
 
 SUPPLEMENTS:
 - With dinner: Omega-3, Vitamin D3
+- Training days: Creatine 3g (post-workout with dinner preferred; fallback: 30min pre-workout if dinner irregular)
 - 90min before sleep: Magnesium, Ashwagandha
 - Adjust pre-sleep timing dynamically using WHOOP predicted/last sleep
 
@@ -163,27 +169,39 @@ LOCATIONS:
 
 PLANNING PREFERENCES:
 - Heavy tasks first (frontload cognitive work)
-- Build mode morning block 06:10-08:00 is SACRED
+- Build mode morning block 06:10-08:00 is SACRED (but can flex for journaling if needed)
 - Minimize context switching (cluster by tags/projects)
 - Breaks: 5-10min every 50-90min
 - Day buffer: 10-15% unscheduled time
 - Hard-fixed events ALWAYS respected
+- Digital detox: Every other Saturday - suppress screen-heavy tasks, prefer gym/swimming/groceries/analog activities
 
 SCHEDULING RULES:
 1. Pack hard-fixed events first (events + rituals with hard_fixed=true, hockey games)
-2. ChronoPilot work MUST occupy 06:10-08:00 (highest priority)
+2. Build mode 06:10-08:00: prioritize urgent PS Digital tasks > ChronoPilot > personal projects
+   - If tasks require journaling, schedule 06:10-06:40 journaling block, shift deep work after
 3. Score tasks: (impact * 3) + (priority * 2) + (urgency_score) - (energy_mismatch_penalty)
 4. Cluster by tags/projects to minimize context switching
 5. Breaks: use "buffer" type for 5-10min rest every 50-90min
-6. Meals: use "meal" type for breakfast (post-wake), lunch (12:00-12:45), dinner
-7. Exercise: gym 17:00-18:30 following PPL cycle, yoga/meditation before bed
-8. Supplements: schedule with dinner and 90min before sleep
+6. Meals: use "meal" type for lunch (12:00-12:45 FIXED), dinner (NO breakfast)
+7. Exercise: 
+   - Running: 07:00 weekdays, 07:30 weekends (schedule when possible)
+   - Shower: 07:40 weekdays, 08:00 weekends
+   - Gym: 17:00-18:30 Mon-Sat per PPL-Active-PPL cycle
+   - Football: Thu 17:00-18:30 (optional, replaces gym as Active)
+   - Swimming: 17:00-18:30 on Active/Rest days (prefer over sauna)
+   - Sunday: If hockey 16:00, gym after at 18:30-19:30
+   - Yoga/meditation: 10-15min + 10min before bed
+8. Supplements: 
+   - Dinner: Omega-3, D3, Creatine (on training days)
+   - 90min before sleep: Magnesium, Ashwagandha
 9. Sleep: bedtime routine at 21:30, sleep by 22:00
 10. Day buffer: leave 10-15% unscheduled
 11. If WHOOP recovery <40%, prioritize active recovery over intense work
 12. Respect location constraints (home vs office vs any)
 13. Honor earliest_start, hard_window_start, hard_window_end if present
 14. Commute time on Mon-Thu: factor in travel to/from office
+15. Digital detox Saturday (every other): suppress screen tasks, prefer gym/swim/analog activities
 
 WHOOP DATA TODAY:
 - Recovery: ${whoop.recovery_pct || 'N/A'}%
@@ -219,15 +237,17 @@ EVENTS (${events.length}):
 ${events.length > 0 ? events.map(e => `- "${e.title}" [${e.start_at} to ${e.end_at}, ${e.hard_fixed ? 'HARD-FIXED' : 'flexible'}]`).join('\n') : '(No events)'}
 
 Generate optimal schedule as JSON array. If no tasks/rituals exist, create a productive template day with:
-- Deep work block (06:10-08:00)
-- Morning routine & breakfast
+- Deep work block (06:10-08:00) - prioritize based on task urgency/impact
+- Running (07:00 weekdays / 07:30 weekends)
+- Shower (07:40 weekdays / 08:00 weekends)
 - Focused work sessions with breaks
-- Lunch break
+- Lunch break (12:00-12:45)
 - Afternoon work/projects
-- Exercise time
-- Dinner
-- Evening wind-down
-- Bedtime routine`;
+- Exercise time (gym/football/swimming per schedule)
+- Dinner (with supplements on training days)
+- Evening wind-down (yoga + meditation)
+- Bedtime routine (21:30-22:00)`;
+
 
     console.log('Calling Lovable AI...');
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
