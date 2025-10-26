@@ -45,16 +45,24 @@ export const TimelineView = () => {
     refetchInterval: 30000, // Refresh every 30s
   });
 
+  const formatTimeFromUTC = (isoString: string) => {
+    const date = new Date(isoString);
+    const hours = date.getUTCHours().toString().padStart(2, '0');
+    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
   const getBlockPosition = (block: TimeBlock) => {
     const start = parseISO(block.start_at);
     const end = parseISO(block.end_at);
     const durationMinutes = (end.getTime() - start.getTime()) / 60000;
     
-    // Get local hours and minutes
-    let startMinutes = start.getHours() * 60 + start.getMinutes();
+    // Use UTC components to treat database times as local times
+    const utcDate = new Date(block.start_at);
+    let startMinutes = utcDate.getUTCHours() * 60 + utcDate.getUTCMinutes();
     
     // If block starts before 6 AM (midnight to 5:59 AM), it's "next day" - add 24 hours
-    if (start.getHours() < TIMELINE_START_HOUR) {
+    if (utcDate.getUTCHours() < TIMELINE_START_HOUR) {
       startMinutes += 24 * 60;
     }
     
@@ -100,7 +108,7 @@ export const TimelineView = () => {
               </Badge>
               <h2 className="text-2xl font-bold text-foreground">{currentBlock.title}</h2>
               <p className="text-muted-foreground">
-                {format(parseISO(currentBlock.start_at), 'HH:mm')} - {format(parseISO(currentBlock.end_at), 'HH:mm')}
+                {formatTimeFromUTC(currentBlock.start_at)} - {formatTimeFromUTC(currentBlock.end_at)}
               </p>
               {currentBlock.notes && (
                 <p className="text-sm text-muted-foreground">{currentBlock.notes}</p>
@@ -164,7 +172,7 @@ export const TimelineView = () => {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-sm truncate">{block.title}</p>
                         <p className="text-xs text-muted-foreground">
-                          {format(parseISO(block.start_at), 'HH:mm')} - {format(parseISO(block.end_at), 'HH:mm')}
+                          {formatTimeFromUTC(block.start_at)} - {formatTimeFromUTC(block.end_at)}
                         </p>
                         {block.notes && height > 60 && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{block.notes}</p>
