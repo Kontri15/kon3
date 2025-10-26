@@ -20,48 +20,41 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const systemPrompt = `You are an expert task planner and time estimator. Your job is to decompose complex tasks into the smallest meaningful steps with accurate time estimates.
+    const systemPrompt = `You are a strategic task planner for the AI era. The user works with advanced AI coding assistants (like Claude, GPT) that can implement most technical work through prompts.
 
-For each task, provide:
-1. Steps: Break down into specific, actionable steps (each 15-90 min)
-2. Artifacts: List deliverables/outputs from each step
-3. Risks: Identify potential blockers or uncertainties
-4. Checklist: Create a completion checklist
-5. MVP Path: Suggest an 80/20 approach - which 20% gives 80% value
-6. Time estimates: Total minutes and minimum block size
+Your job: Break tasks into HIGH-LEVEL strategic phases, not granular implementation steps. Focus on:
+- What needs to be decided/designed (AI can't decide for you)
+- What needs to be tested/validated (AI can't know if it works)
+- Integration points and dependencies
+- Risk areas that need human oversight
 
-Be realistic with time estimates. Consider:
-- Research/learning time
-- Implementation time  
-- Testing/debugging time
-- Context switching overhead
+CONTEXT: Modern development workflow
+- AI handles: coding, refactoring, documentation, boilerplate
+- Human handles: decisions, architecture, testing, integration validation
+- Time estimates: include prompt engineering, review, testing - NOT line-by-line coding
 
-Format your response as valid JSON only, no markdown.`;
+Keep it CONCISE. 3-5 strategic steps max. Each step should be a meaningful milestone, not a code task.
 
-    const userPrompt = `Decompose this task:
+Format: Valid JSON only, no markdown.`;
 
-Title: ${title}
-Description: ${description || 'No description provided'}
-Context: ${context || 'No additional context'}
-Due Date: ${dueAt || 'Not specified'}
+    const userPrompt = `Task: ${title}
+${description ? `\nDetails: ${description}` : ''}
+${context ? `\nProject: ${context}` : ''}
+${dueAt ? `\nDue: ${dueAt}` : ''}
 
-Provide a detailed breakdown following this exact JSON structure:
+Break this into strategic phases. Return JSON:
 {
   "steps": [
-    {
-      "title": "Step title",
-      "description": "What to do",
-      "estimatedMinutes": 60,
-      "dependencies": []
-    }
+    {"title": "Phase name", "description": "What to validate/decide", "estimatedMinutes": 45}
   ],
-  "artifacts": ["Deliverable 1", "Deliverable 2"],
-  "risks": ["Risk 1", "Risk 2"],
-  "checklist": ["Check 1", "Check 2"],
-  "mvpPath": "Description of the 80/20 approach",
-  "totalEstimatedMinutes": 180,
-  "minBlockMinutes": 60
-}`;
+  "artifacts": ["Key deliverable 1", "Key deliverable 2"],
+  "risks": ["Critical risk only"],
+  "mvpPath": "One sentence: fastest path to validate this works",
+  "totalEstimatedMinutes": 120,
+  "minBlockMinutes": 45
+}
+
+Keep artifacts to 2-3 items max. Focus on HIGH-LEVEL milestones, not implementation details.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -70,7 +63,7 @@ Provide a detailed breakdown following this exact JSON structure:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }

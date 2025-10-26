@@ -185,20 +185,6 @@ export const TaskDecomposition = ({ task }: TaskDecompositionProps) => {
         </Card>
       )}
 
-      {/* Checklist */}
-      {result.checklist.length > 0 && (
-        <Card className="glass border-border p-4">
-          <h4 className="font-semibold text-sm mb-2">Completion Checklist</h4>
-          <ul className="space-y-1">
-            {result.checklist.map((item, index) => (
-              <li key={index} className="text-xs text-muted-foreground flex items-start gap-2">
-                <span className="text-muted-foreground">☐</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
 
       <Button 
         variant="outline" 
