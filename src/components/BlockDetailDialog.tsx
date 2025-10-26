@@ -1,10 +1,14 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Clock, Calendar, Tag, FileText, CheckCircle2, XCircle, Trash2 } from "lucide-react";
+import { Clock, Calendar, Tag, FileText, CheckCircle2, XCircle, Trash2, Save } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,8 +41,89 @@ interface BlockDetailDialogProps {
 
 export const BlockDetailDialog = ({ block, open, onOpenChange, onDelete }: BlockDetailDialogProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   if (!block) return null;
+
+  // Initialize time values when block changes or editing starts
+  const initializeTimes = () => {
+    const start = parseISO(block.start_at);
+    const end = parseISO(block.end_at);
+    setStartTime(format(start, 'HH:mm'));
+    setEndTime(format(end, 'HH:mm'));
+  };
+
+  const handleEditClick = () => {
+    initializeTimes();
+    setIsEditing(true);
+  };
+
+  const handleSaveTimes = async () => {
+    setIsSaving(true);
+    try {
+      // Parse the current date and new times
+      const currentDate = parseISO(block.start_at);
+      const [startHours, startMinutes] = startTime.split(':').map(Number);
+      const [endHours, endMinutes] = endTime.split(':').map(Number);
+
+      // Create new Date objects with updated times
+      const newStartDate = new Date(currentDate);
+      newStartDate.setHours(startHours, startMinutes, 0, 0);
+
+      let newEndDate = new Date(currentDate);
+      newEndDate.setHours(endHours, endMinutes, 0, 0);
+
+      // If end time is before start time, assume it's next day
+      if (newEndDate <= newStartDate) {
+        newEndDate.setDate(newEndDate.getDate() + 1);
+      }
+
+      // Validate minimum duration (5 minutes)
+      const durationMinutes = (newEndDate.getTime() - newStartDate.getTime()) / (1000 * 60);
+      if (durationMinutes < 5) {
+        toast({
+          title: "Invalid duration",
+          description: "Blocks must be at least 5 minutes long",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      // Update in database
+      const { error } = await supabase
+        .from('blocks')
+        .update({
+          start_at: newStartDate.toISOString(),
+          end_at: newEndDate.toISOString()
+        })
+        .eq('id', block.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Times updated",
+        description: "Block schedule has been updated successfully"
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating times:', error);
+      toast({
+        title: "Failed to update",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const formatTime = (isoString: string) => {
     return format(parseISO(isoString), 'HH:mm');
@@ -87,15 +172,43 @@ export const BlockDetailDialog = ({ block, open, onOpenChange, onDelete }: Block
             <div className="flex items-center gap-2 mb-3">
               <Clock className="w-5 h-5 text-primary" />
               <h3 className="font-semibold">Time & Duration</h3>
+              {!isEditing && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleEditClick}
+                  className="ml-auto"
+                >
+                  Edit
+                </Button>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4 ml-7">
               <div>
-                <p className="text-sm text-muted-foreground">Start Time</p>
-                <p className="text-lg font-medium">{formatTime(block.start_at)}</p>
+                <p className="text-sm text-muted-foreground mb-1">Start Time</p>
+                {isEditing ? (
+                  <Input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="w-full"
+                  />
+                ) : (
+                  <p className="text-lg font-medium">{formatTime(block.start_at)}</p>
+                )}
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">End Time</p>
-                <p className="text-lg font-medium">{formatTime(block.end_at)}</p>
+                <p className="text-sm text-muted-foreground mb-1">End Time</p>
+                {isEditing ? (
+                  <Input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="w-full"
+                  />
+                ) : (
+                  <p className="text-lg font-medium">{formatTime(block.end_at)}</p>
+                )}
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Duration</p>
@@ -106,6 +219,27 @@ export const BlockDetailDialog = ({ block, open, onOpenChange, onDelete }: Block
                 <p className="text-sm font-medium">{formatDate(block.start_at)}</p>
               </div>
             </div>
+            {isEditing && (
+              <div className="flex gap-2 mt-4 ml-7">
+                <Button
+                  size="sm"
+                  onClick={handleSaveTimes}
+                  disabled={isSaving}
+                  className="gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  {isSaving ? "Saving..." : "Save Times"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
           </Card>
 
           {/* Type & Status Node */}
