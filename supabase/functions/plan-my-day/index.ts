@@ -309,7 +309,7 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
