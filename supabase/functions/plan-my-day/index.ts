@@ -140,7 +140,7 @@ USER PROFILE & DAILY ROUTINE (ALL TIMES IN Europe/Bratislava timezone):
 - Wake time: ${wakeTime} EXACTLY
 - Build mode focus (SACRED): ${buildModeStart}-${buildModeEnd} EXACTLY - highest priority cognitive/deep work
   * Prioritize based on tasks: urgent PS Digital work > ChronoPilot > personal projects/learning
-  * Can be interrupted by journaling block (06:10-06:40, 30min) if important project/decision requires it
+  * Can be interrupted by journaling block if important project/decision requires it
 - Running: START at 07:00 weekdays, 07:30 weekends (30min duration, schedule when possible)
 - Shower: 10 MINUTES duration (start 07:40 weekdays, 08:00 weekends)
 - Breakfast: NONE (user does not eat breakfast)
@@ -204,8 +204,8 @@ PLANNING PREFERENCES:
 SCHEDULING RULES (CRITICAL - USE EXACT TIMES):
 1. ALL BLOCKS MUST HAVE MINIMUM 5-MINUTE DURATION - never create 0-duration blocks
 2. Pack hard-fixed events first (events + rituals with hard_fixed=true, hockey games)
-3. Build mode 06:10-08:00 EXACTLY: prioritize urgent PS Digital tasks > ChronoPilot > personal projects
-   - If tasks require journaling, schedule 06:10-06:40 journaling block, shift deep work after
+3. Build mode ${buildModeStart}-${buildModeEnd} EXACTLY: prioritize urgent PS Digital tasks > ChronoPilot > personal projects
+   - If tasks require journaling, schedule it during build mode, shift deep work after
 4. Score tasks: (impact * 3) + (priority * 2) + (urgency_score) - (energy_mismatch_penalty)
 5. Cluster by tags/projects to minimize context switching
 6. Breaks: use "buffer" type for 5-10min rest every 50-90min
@@ -239,7 +239,7 @@ SCHEDULING RULES (CRITICAL - USE EXACT TIMES):
 16. Digital detox Saturday (every other): suppress screen tasks, prefer gym/swim/analog activities
 17. TIMEZONE: All times in Europe/Bratislava (UTC+1/+2), use ISO 8601 format with timezone offset
 18. NO OVERLAPS: Ensure each block ends exactly when the next begins (or leave buffer time between)
-19. AVOID EARLY MORNING SCHEDULING: Do not schedule work/tasks before 06:00 unless explicitly required
+19. AVOID EARLY MORNING SCHEDULING: Do not schedule work/tasks before ${wakeTime} unless explicitly required
 
 WHOOP DATA TODAY:
 - Recovery: ${whoop.recovery_pct || 'N/A'}%
@@ -364,16 +364,10 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
       return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offset}`;
     };
 
-    // Post-process: Apply timezone offsets to ALL blocks first
-    blocks = blocks.map((block: any) => {
-      const start = new Date(block.start_at);
-      const end = new Date(block.end_at);
-      
-      // Apply timezone offset to ensure consistent format
-      block.start_at = formatWithTimezoneOffset(start);
-      block.end_at = formatWithTimezoneOffset(end);
-      
-      return block;
+    // Log AI-generated blocks for debugging
+    console.log('AI-generated blocks (first 3):');
+    blocks.slice(0, 3).forEach((b: any) => {
+      console.log(`  - "${b.title}": ${b.start_at} to ${b.end_at}`);
     });
 
     // Fix 0-duration blocks
@@ -469,6 +463,11 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
       ...block,
       user_id: userId,
     }));
+
+    console.log('Inserting blocks (first 3):');
+    blocksToInsert.slice(0, 3).forEach((b: any) => {
+      console.log(`  - "${b.title}": ${b.start_at} to ${b.end_at}`);
+    });
 
     const { error: insertError } = await supabase.from('blocks').insert(blocksToInsert);
     if (insertError) throw insertError;
