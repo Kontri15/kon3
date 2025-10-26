@@ -231,8 +231,8 @@ Return ONLY a JSON array of blocks (no markdown, no explanation):
 [
   {
     "title": "Block title",
-    "start_at": "2025-10-26T06:10:00Z",
-    "end_at": "2025-10-26T08:00:00Z",
+    "start_at": "2025-10-26T06:10:00+01:00",
+    "end_at": "2025-10-26T08:00:00+01:00",
     "type": "task" | "ritual" | "event" | "meal" | "sleep" | "buffer" | "commute",
     "status": "planned",
     "task_id": "uuid or null",
@@ -245,8 +245,11 @@ IMPORTANT: Use "ritual" type for all exercise-related activities (running, showe
 
 CRITICAL TIMING REQUIREMENTS:
 - ALL times MUST use Europe/Bratislava timezone (UTC+1 in winter, UTC+2 in summer)
-- Use ISO 8601 format with proper timezone offset: "2025-10-26T07:00:00+01:00" or "2025-10-26T07:00:00+02:00"
-- DO NOT shift times by an hour - if prompt says 07:00, schedule at 07:00, NOT 06:00
+- Use ISO 8601 format with EXPLICIT timezone offset: "2025-10-26T07:00:00+01:00" (NOT "Z", NOT "06:00:00+00:00")
+- TIMEZONE OFFSET: Always use +01:00 for winter (Oct-Mar) or +02:00 for summer (Apr-Sep)
+- DO NOT shift times - if prompt says 07:00 local time, write "2025-10-26T07:00:00+01:00"
+- Example: Wake at 06:00 = "2025-10-26T06:00:00+01:00", NOT "2025-10-26T05:00:00Z"
+- Sleep MUST span overnight: "2025-10-26T22:00:00+01:00" to "2025-10-27T06:00:00+01:00"
 - Ensure no overlaps between blocks
 - Fill the entire day 06:00-22:00 with planned activities`;
 
@@ -321,38 +324,93 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
       throw new Error('Failed to parse AI response as JSON');
     }
 
+    // Helper function to format date with Europe/Bratislava timezone offset
+    const formatWithTimezoneOffset = (date: Date): string => {
+      // Determine if we're in DST (roughly Apr-Sep = +02:00, Oct-Mar = +01:00)
+      const month = date.getMonth();
+      const isDST = month >= 3 && month <= 8; // Apr-Sep (months 3-8)
+      const offset = isDST ? '+02:00' : '+01:00';
+      
+      // Format: YYYY-MM-DDTHH:mm:ss+01:00
+      const year = date.getFullYear();
+      const monthStr = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      
+      return `${year}-${monthStr}-${day}T${hours}:${minutes}:${seconds}${offset}`;
+    };
+
     // Post-processing validation and fixes
     blocks = blocks.map((block: any) => {
-      const startDate = new Date(block.start_at);
-      const endDate = new Date(block.end_at);
+      let startDate = new Date(block.start_at);
+      let endDate = new Date(block.end_at);
+      
+      // Ensure proper timezone offset format (not Z or +00:00)
+      if (block.start_at.endsWith('Z') || block.start_at.includes('+00:00')) {
+        console.warn(`Fixing timezone for: "${block.title}"`);
+        block.start_at = formatWithTimezoneOffset(startDate);
+        block.end_at = formatWithTimezoneOffset(endDate);
+        startDate = new Date(block.start_at);
+        endDate = new Date(block.end_at);
+      }
+      
       const durationMs = endDate.getTime() - startDate.getTime();
       const durationHours = durationMs / (1000 * 60 * 60);
       
       // Fix 0-duration or negative duration blocks
       if (durationMs <= 0) {
-        console.warn(`Fixing 0-duration block: "${block.title}" (${block.start_at} - ${block.end_at})`);
-        // Add default 30min duration
-        endDate.setTime(startDate.getTime() + 30 * 60 * 1000);
-        block.end_at = endDate.toISOString();
+        console.warn(`Fixing 0-duration block: "${block.title}"`);
+        endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
+        block.end_at = formatWithTimezoneOffset(endDate);
       }
       
-      // Special handling for sleep blocks - must span overnight (~7-8 hours)
+      // Special handling for sleep blocks - must span overnight (~8 hours)
       if (block.type === 'sleep' || block.title.toLowerCase().includes('sleep') || block.title.toLowerCase().includes('lights')) {
         if (durationHours < 6 || durationHours > 10) {
           console.warn(`Fixing sleep block duration: "${block.title}" (was ${durationHours.toFixed(1)}h)`);
-          // Sleep should be 8 hours and span to next day
-          // Expected pattern: 22:00 today -> 06:00 tomorrow
-          const sleepStart = new Date(block.start_at);
+          // Sleep: 22:00 today -> 06:00 tomorrow
+          const sleepStart = new Date(startDate);
+          sleepStart.setHours(22, 0, 0, 0);
           const sleepEnd = new Date(sleepStart);
-          sleepEnd.setDate(sleepEnd.getDate() + 1); // Next day
-          sleepEnd.setHours(6, 0, 0, 0); // 06:00
-          block.end_at = sleepEnd.toISOString();
-          console.log(`Fixed to: ${block.start_at} -> ${block.end_at}`);
+          sleepEnd.setDate(sleepEnd.getDate() + 1);
+          sleepEnd.setHours(6, 0, 0, 0);
+          block.start_at = formatWithTimezoneOffset(sleepStart);
+          block.end_at = formatWithTimezoneOffset(sleepEnd);
+          console.log(`Fixed sleep: ${block.start_at} -> ${block.end_at}`);
         }
       }
       
       return block;
     });
+
+    // Ensure sleep block exists (22:00 -> 06:00 next day)
+    const hasSleep = blocks.some((b: any) => 
+      b.type === 'sleep' || 
+      b.title.toLowerCase().includes('sleep') || 
+      b.title.toLowerCase().includes('lights')
+    );
+    
+    if (!hasSleep) {
+      console.warn('No sleep block found - adding default sleep block');
+      const sleepStart = new Date(today);
+      sleepStart.setHours(22, 0, 0, 0);
+      const sleepEnd = new Date(sleepStart);
+      sleepEnd.setDate(sleepEnd.getDate() + 1);
+      sleepEnd.setHours(6, 0, 0, 0);
+      
+      blocks.push({
+        title: 'Sleep',
+        start_at: formatWithTimezoneOffset(sleepStart),
+        end_at: formatWithTimezoneOffset(sleepEnd),
+        type: 'sleep',
+        status: 'planned',
+        task_id: null,
+        ritual_id: null,
+        notes: 'Target: 8 hours'
+      });
+    }
 
     // Delete existing planned blocks for today
     const todayStart = new Date(today.setHours(0, 0, 0, 0)).toISOString();

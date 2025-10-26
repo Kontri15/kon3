@@ -11,7 +11,7 @@ interface TimeBlock {
   title: string;
   start_at: string;
   end_at: string;
-  type: "task" | "ritual" | "event" | "meal" | "break";
+  type: "task" | "ritual" | "event" | "meal" | "break" | "buffer" | "commute" | "sleep";
   status: string;
   task_id?: string;
   ritual_id?: string;
@@ -46,11 +46,10 @@ export const TimelineView = () => {
     refetchInterval: 30000, // Refresh every 30s
   });
 
-  const formatTimeFromUTC = (isoString: string) => {
+  const formatTimeFromLocal = (isoString: string) => {
     const date = new Date(isoString);
-    const hours = date.getUTCHours().toString().padStart(2, '0');
-    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
+    // Use local time components (JavaScript handles timezone offset automatically)
+    return format(date, 'HH:mm');
   };
 
   const getBlockPosition = (block: TimeBlock) => {
@@ -63,14 +62,13 @@ export const TimelineView = () => {
       5
     );
     
-    // Use UTC components to treat database times as local times
-    const utcDate = new Date(block.start_at);
-    let startHour = utcDate.getUTCHours();
-    let startMinutes = startHour * 60 + utcDate.getUTCMinutes();
+    // Use local time components (timezone offset already in ISO string)
+    let startHour = start.getHours();
+    let startMinutes = startHour * 60 + start.getMinutes();
     
-    // Handle overnight blocks (before 6 AM) - they're "tonight's" blocks shown at bottom
+    // Handle overnight blocks (before 6 AM) - position at end of timeline
     if (startHour < TIMELINE_START_HOUR) {
-      startMinutes += 24 * 60; // Add 24 hours to position at end of timeline
+      startMinutes += 24 * 60; // Add 24 hours to position at bottom
     }
     
     const timelineStartMinutes = TIMELINE_START_HOUR * 60; // 6 AM = 360 minutes
@@ -79,17 +77,16 @@ export const TimelineView = () => {
     // Calculate top position
     let topPosition = (startMinutes - timelineStartMinutes) * PIXELS_PER_MINUTE;
     
-    // For blocks that start before our timeline but end within it (e.g., sleep from last night)
+    // For blocks that start before our timeline but end within it
     if (startMinutes < timelineStartMinutes) {
       topPosition = 0; // Start at top of timeline
-      // Calculate only the visible portion
-      const endMinutes = utcDate.getUTCHours() * 60 + utcDate.getUTCMinutes() + actualDurationMinutes;
+      const endMinutes = start.getHours() * 60 + start.getMinutes() + actualDurationMinutes;
       const visibleDuration = Math.min(endMinutes - timelineStartMinutes, actualDurationMinutes);
       const height = Math.max(visibleDuration * PIXELS_PER_MINUTE, 40);
       return { top: 0, height };
     }
     
-    // Calculate height ensuring it doesn't overflow timeline and has minimum readable height
+    // Calculate height ensuring it doesn't overflow and has minimum readable height
     const maxHeight = (timelineEndMinutes - startMinutes) * PIXELS_PER_MINUTE;
     const calculatedHeight = actualDurationMinutes * PIXELS_PER_MINUTE;
     const height = Math.max(Math.min(calculatedHeight, maxHeight), 40);
@@ -111,6 +108,9 @@ export const TimelineView = () => {
       event: "bg-block-event border-l-green-500",
       meal: "bg-block-meal border-l-orange-500",
       break: "bg-card/50 border-l-gray-400",
+      buffer: "bg-yellow-500/10 border-l-yellow-500",
+      commute: "bg-cyan-500/10 border-l-cyan-500",
+      sleep: "bg-indigo-500/10 border-l-indigo-500",
     };
     return colors[type] || colors.task;
   };
@@ -139,7 +139,7 @@ export const TimelineView = () => {
               </Badge>
               <h2 className="text-2xl font-bold text-foreground">{currentBlock.title}</h2>
               <p className="text-muted-foreground">
-                {formatTimeFromUTC(currentBlock.start_at)} - {formatTimeFromUTC(currentBlock.end_at)}
+                {formatTimeFromLocal(currentBlock.start_at)} - {formatTimeFromLocal(currentBlock.end_at)}
               </p>
               {currentBlock.notes && (
                 <p className="text-sm text-muted-foreground">{currentBlock.notes}</p>
@@ -226,7 +226,7 @@ export const TimelineView = () => {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-sm truncate">{block.title}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatTimeFromUTC(block.start_at)} - {formatTimeFromUTC(block.end_at)}
+                          {formatTimeFromLocal(block.start_at)} - {formatTimeFromLocal(block.end_at)}
                         </p>
                         {block.notes && height > 60 && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{block.notes}</p>
