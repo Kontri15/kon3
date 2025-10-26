@@ -115,17 +115,19 @@ Deno.serve(async (req) => {
 
     const systemPrompt = `You are ChronoPilot's scheduling engine. Plan a personalized day for ${today.toISOString().split('T')[0]} (${dayOfWeek}) in Europe/Bratislava timezone.
 
-USER PROFILE & DAILY ROUTINE:
-- Wake time: 06:00
-- Build mode focus (SACRED): 06:10-08:00 - highest priority cognitive/deep work
+USER PROFILE & DAILY ROUTINE (ALL TIMES IN Europe/Bratislava timezone):
+- Wake time: 06:00 EXACTLY
+- Build mode focus (SACRED): 06:10-08:00 EXACTLY - highest priority cognitive/deep work
   * Prioritize based on tasks: urgent PS Digital work > ChronoPilot > personal projects/learning
   * Can be interrupted by journaling block (06:10-06:40, 30min) if important project/decision requires it
-- Running: 07:00 weekdays, 07:30 weekends (schedule when possible)
-- Shower: 07:40 weekdays, 08:00 weekends
+- Running: START at 07:00 weekdays, 07:30 weekends (30min duration, schedule when possible)
+- Shower: 10 MINUTES duration (start 07:40 weekdays, 08:00 weekends)
 - Breakfast: NONE (user does not eat breakfast)
-- Lunch window: 12:00-12:45 (FIXED)
-- Pre-bed routine: starts 21:30
-- Lights out: 22:00
+- Lunch: 12:00-12:45 EXACTLY (45min FIXED window)
+  * MUST specify actual meal from rotation: base (rice/potatoes/fries/pasta) + main (salmon/steak/chicken/turkey/tuna/legumes)
+  * Example: "Lunch: Rice with grilled salmon" or "Lunch: Potatoes with chicken breast"
+- Pre-bed routine: starts 21:30 EXACTLY
+- Lights out: 22:00 EXACTLY
 - Sleep goal: 7-8 hours (minimum 6.5h), optimize for quality
 
 WORK SCHEDULE:
@@ -147,7 +149,7 @@ TRAINING & EXERCISE (6x per week):
 
 SPORTS SCHEDULE (HARD-FIXED):
 - Hockey team: HK Spišská Nová Ves
-- Games: Friday 17:30 or Sunday 16:00
+- Games: Friday 17:00-20:00 (3 hours) or Sunday 16:00-19:00 (3 hours)
 - Add ±10min pre/post buffers for hockey games
 - Verify schedule daily from feed
 
@@ -164,6 +166,7 @@ SUPPLEMENTS:
 
 LOCATIONS:
 - Default: Bratislava
+- Gym commute: 5 minutes from home
 - Secondary: Spišská Nová Ves (roughly once per month)
 - Upcoming trip: Week of 2025-11-01 in SNV
 
@@ -176,32 +179,38 @@ PLANNING PREFERENCES:
 - Hard-fixed events ALWAYS respected
 - Digital detox: Every other Saturday - suppress screen-heavy tasks, prefer gym/swimming/groceries/analog activities
 
-SCHEDULING RULES:
+SCHEDULING RULES (CRITICAL - USE EXACT TIMES):
 1. Pack hard-fixed events first (events + rituals with hard_fixed=true, hockey games)
-2. Build mode 06:10-08:00: prioritize urgent PS Digital tasks > ChronoPilot > personal projects
+2. Build mode 06:10-08:00 EXACTLY: prioritize urgent PS Digital tasks > ChronoPilot > personal projects
    - If tasks require journaling, schedule 06:10-06:40 journaling block, shift deep work after
 3. Score tasks: (impact * 3) + (priority * 2) + (urgency_score) - (energy_mismatch_penalty)
 4. Cluster by tags/projects to minimize context switching
 5. Breaks: use "buffer" type for 5-10min rest every 50-90min
-6. Meals: use "meal" type for lunch (12:00-12:45 FIXED), dinner (NO breakfast)
-7. Exercise: 
-   - Running: 07:00 weekdays, 07:30 weekends (schedule when possible)
-   - Shower: 07:40 weekdays, 08:00 weekends
-   - Gym: 17:00-18:30 Mon-Sat per PPL-Active-PPL cycle
+6. Meals: 
+   - Lunch: 12:00-12:45 EXACTLY (use "meal" type, MUST specify actual meal from rotation)
+   - Dinner: evening (use "meal" type, specify actual meal)
+   - NO breakfast
+7. Exercise (use "ritual" type for all): 
+   - Running: START at 07:00 weekdays / 07:30 weekends, 30min duration
+   - Shower: 10 MINUTES (start 07:40 weekdays / 08:00 weekends)
+   - Gym: 17:00-18:30 Mon-Sat per PPL-Active-PPL cycle (5min commute)
    - Football: Thu 17:00-18:30 (optional, replaces gym as Active)
    - Swimming: 17:00-18:30 on Active/Rest days (prefer over sauna)
-   - Sunday: If hockey 16:00, gym after at 18:30-19:30
-   - Yoga/meditation: 10-15min + 10min before bed
+   - Hockey: Fri 17:00-20:00 or Sun 16:00-19:00 (3 hours total with buffers)
+   - Sunday: If hockey 16:00-19:00, gym after at 18:30-19:30
+   - Yoga: 10-15min before bed
+   - Meditation: 10min before bed
 8. Supplements: 
    - Dinner: Omega-3, D3, Creatine (on training days)
    - 90min before sleep: Magnesium, Ashwagandha
-9. Sleep: bedtime routine at 21:30, sleep by 22:00
+9. Sleep: bedtime routine at 21:30, sleep by 22:00 EXACTLY
 10. Day buffer: leave 10-15% unscheduled
 11. If WHOOP recovery <40%, prioritize active recovery over intense work
 12. Respect location constraints (home vs office vs any)
 13. Honor earliest_start, hard_window_start, hard_window_end if present
-14. Commute time on Mon-Thu: factor in travel to/from office
+14. Commute: 5min to gym, factor in office commute Mon-Thu
 15. Digital detox Saturday (every other): suppress screen tasks, prefer gym/swim/analog activities
+16. TIMEZONE: All times in Europe/Bratislava (UTC+1/+2), use ISO 8601 format with timezone offset
 
 WHOOP DATA TODAY:
 - Recovery: ${whoop.recovery_pct || 'N/A'}%
@@ -226,7 +235,12 @@ Return ONLY a JSON array of blocks (no markdown, no explanation):
 
 IMPORTANT: Use "ritual" type for all exercise-related activities (running, shower, gym, yoga, meditation, etc.)
 
-Use ISO 8601 timestamps in Europe/Bratislava timezone. Ensure no overlaps. Fill the entire day 06:00-22:00.`;
+CRITICAL TIMING REQUIREMENTS:
+- ALL times MUST use Europe/Bratislava timezone (UTC+1 in winter, UTC+2 in summer)
+- Use ISO 8601 format with proper timezone offset: "2025-10-26T07:00:00+01:00" or "2025-10-26T07:00:00+02:00"
+- DO NOT shift times by an hour - if prompt says 07:00, schedule at 07:00, NOT 06:00
+- Ensure no overlaps between blocks
+- Fill the entire day 06:00-22:00 with planned activities`;
 
     const userPrompt = `
 TASKS (${tasks.length}):
@@ -239,16 +253,16 @@ EVENTS (${events.length}):
 ${events.length > 0 ? events.map(e => `- "${e.title}" [${e.start_at} to ${e.end_at}, ${e.hard_fixed ? 'HARD-FIXED' : 'flexible'}]`).join('\n') : '(No events)'}
 
 Generate optimal schedule as JSON array. If no tasks/rituals exist, create a productive template day with:
-- Deep work block (06:10-08:00) - prioritize based on task urgency/impact
-- Running (07:00 weekdays / 07:30 weekends)
-- Shower (07:40 weekdays / 08:00 weekends)
+- Deep work block (06:10-08:00 EXACTLY)
+- Running (START 07:00 weekdays / 07:30 weekends, 30min)
+- Shower (START 07:40 weekdays / 08:00 weekends, 10min)
 - Focused work sessions with breaks
-- Lunch break (12:00-12:45)
+- Lunch (12:00-12:45 EXACTLY) - MUST specify meal: "[base] with [main]" e.g. "Rice with salmon"
 - Afternoon work/projects
 - Exercise time (gym/football/swimming per schedule)
-- Dinner (with supplements on training days)
+- Dinner (specify meal + supplements on training days)
 - Evening wind-down (yoga + meditation)
-- Bedtime routine (21:30-22:00)`;
+- Bedtime routine (21:30-22:00 EXACTLY)`;
 
 
     console.log('Calling Lovable AI...');
