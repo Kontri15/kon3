@@ -20,6 +20,8 @@ interface TimeBlock {
 
 export const TimelineView = () => {
   const hours = Array.from({ length: 16 }, (_, i) => i + 6); // 6 AM to 10 PM
+  const PIXELS_PER_MINUTE = 1; // 60px per hour
+  const TIMELINE_START_HOUR = 6; // 6 AM
   
   const { data: blocks = [], isLoading } = useQuery({
     queryKey: ['blocks', new Date().toDateString()],
@@ -40,6 +42,18 @@ export const TimelineView = () => {
     },
     refetchInterval: 30000, // Refresh every 30s
   });
+
+  const getBlockPosition = (block: TimeBlock) => {
+    const start = parseISO(block.start_at);
+    const end = parseISO(block.end_at);
+    const durationMinutes = (end.getTime() - start.getTime()) / 60000;
+    const startMinutes = start.getHours() * 60 + start.getMinutes();
+    const timelineStartMinutes = TIMELINE_START_HOUR * 60;
+    const topPosition = (startMinutes - timelineStartMinutes) * PIXELS_PER_MINUTE;
+    const height = Math.max(durationMinutes * PIXELS_PER_MINUTE, 30); // Minimum 30px height
+    
+    return { top: topPosition, height };
+  };
 
   const currentBlock = blocks.find(b => {
     const now = new Date();
@@ -101,50 +115,59 @@ export const TimelineView = () => {
             No schedule yet. Click "Plan My Day" to generate your timeline.
           </div>
         ) : (
-          <div className="space-y-2">
-            {hours.map((hour) => {
-              const hourStr = hour.toString().padStart(2, '0');
-              const blocksAtHour = blocks.filter((block) => {
-                const blockHour = format(parseISO(block.start_at), 'HH');
-                return blockHour === hourStr;
-              });
-
-              return (
-                <div key={hour} className="flex gap-4 min-h-[60px]">
-                  <div className="w-16 flex-shrink-0">
-                    <span className="timeline-hour">
-                      {hourStr}:00
-                    </span>
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    {blocksAtHour.map((block) => (
-                      <Card
-                        key={block.id}
-                        className={`p-3 border-l-4 ${getBlockColor(block.type)} bg-card/50 backdrop-blur hover:bg-card/70 transition-all cursor-pointer`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-sm">{block.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(parseISO(block.start_at), 'HH:mm')} - {format(parseISO(block.end_at), 'HH:mm')}
-                            </p>
-                            {block.notes && (
-                              <p className="text-xs text-muted-foreground mt-1">{block.notes}</p>
-                            )}
-                          </div>
-                          <Badge variant="outline" className="capitalize">
-                            {block.type}
-                          </Badge>
-                        </div>
-                      </Card>
-                    ))}
-                    {blocksAtHour.length === 0 && (
-                      <div className="h-[60px] border-l-2 border-dashed border-border/30" />
-                    )}
-                  </div>
+          <div className="flex gap-4">
+            {/* Hour markers */}
+            <div className="w-16 flex-shrink-0 space-y-[60px]">
+              {hours.map((hour) => (
+                <div key={hour} className="h-[60px]">
+                  <span className="timeline-hour">
+                    {hour.toString().padStart(2, '0')}:00
+                  </span>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+            
+            {/* Timeline container with blocks */}
+            <div className="flex-1 relative" style={{ height: `${16 * 60}px` }}>
+              {/* Hour grid lines */}
+              {hours.map((hour, index) => (
+                <div
+                  key={hour}
+                  className="absolute left-0 right-0 border-t border-dashed border-border/30"
+                  style={{ top: `${index * 60}px` }}
+                />
+              ))}
+              
+              {/* Blocks */}
+              {blocks.map((block) => {
+                const { top, height } = getBlockPosition(block);
+                return (
+                  <Card
+                    key={block.id}
+                    className={`absolute left-0 right-0 p-3 border-l-4 ${getBlockColor(block.type)} bg-card/50 backdrop-blur hover:bg-card/70 transition-all cursor-pointer`}
+                    style={{
+                      top: `${top}px`,
+                      height: `${height}px`,
+                    }}
+                  >
+                    <div className="flex items-start justify-between h-full">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm truncate">{block.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(parseISO(block.start_at), 'HH:mm')} - {format(parseISO(block.end_at), 'HH:mm')}
+                        </p>
+                        {block.notes && height > 60 && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{block.notes}</p>
+                        )}
+                      </div>
+                      <Badge variant="outline" className="capitalize flex-shrink-0 ml-2">
+                        {block.type}
+                      </Badge>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
         )}
       </Card>
