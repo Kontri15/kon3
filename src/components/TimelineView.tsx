@@ -27,23 +27,33 @@ export const TimelineView = () => {
     queryKey: ['blocks', new Date().toDateString()],
     queryFn: async () => {
       const now = new Date();
-      // Start at 6 AM today
-      const queryStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 0, 0, 0);
-      // End at 6 AM tomorrow (24 hours later)
-      const queryEndTime = new Date(queryStartTime.getTime() + 24 * 60 * 60 * 1000);
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const nextDay = String(now.getDate() + 1).padStart(2, '0');
       
-      // Fetch blocks that START, END, or SPAN across our time window
-      // This captures overnight blocks like sleep (22:00 -> 06:00 next day)
+      // Detect DST for Europe/Bratislava
+      const jan = new Date(now.getFullYear(), 0, 1);
+      const jul = new Date(now.getFullYear(), 6, 1);
+      const stdOffset = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+      const isDST = now.getTimezoneOffset() < stdOffset;
+      const offset = isDST ? '+02:00' : '+01:00';
+      
+      // Create ISO strings with proper timezone offset
+      const queryStartTime = `${year}-${month}-${day}T06:00:00${offset}`;
+      const queryEndTime = `${year}-${month}-${nextDay}T06:00:00${offset}`;
+      
       const { data, error } = await supabase
         .from('blocks')
         .select('*')
-        .or(`and(start_at.gte.${queryStartTime.toISOString()},start_at.lt.${queryEndTime.toISOString()}),and(end_at.gt.${queryStartTime.toISOString()},end_at.lte.${queryEndTime.toISOString()}),and(start_at.lt.${queryStartTime.toISOString()},end_at.gt.${queryStartTime.toISOString()})`)
+        .gte('start_at', queryStartTime)
+        .lt('start_at', queryEndTime)
         .order('start_at');
-      
+        
       if (error) throw error;
       return data as TimeBlock[];
     },
-    refetchInterval: 30000, // Refresh every 30s
+    refetchInterval: 30000,
   });
 
   const formatTimeFromLocal = (isoString: string) => {
@@ -56,40 +66,37 @@ export const TimelineView = () => {
     const start = parseISO(block.start_at);
     const end = parseISO(block.end_at);
     
-    // Calculate actual duration from timestamps (ensure minimum 5min for display)
-    const actualDurationMinutes = Math.max(
-      (end.getTime() - start.getTime()) / 60000,
-      5
-    );
+    // Get local hours/minutes from the timestamp
+    const startHour = start.getHours();
+    const startMinute = start.getMinutes();
+    const endHour = end.getHours();
+    const endMinute = end.getMinutes();
     
-    // Use local time components (timezone offset already in ISO string)
-    let startHour = start.getHours();
-    let startMinutes = startHour * 60 + start.getMinutes();
+    // Calculate minutes from midnight
+    let startMinutesFromMidnight = startHour * 60 + startMinute;
+    let endMinutesFromMidnight = endHour * 60 + endMinute;
     
-    // Handle overnight blocks (before 6 AM) - position at end of timeline
-    if (startHour < TIMELINE_START_HOUR) {
-      startMinutes += 24 * 60; // Add 24 hours to position at bottom
+    // Handle overnight blocks (end time is next day)
+    if (endMinutesFromMidnight < startMinutesFromMidnight) {
+      endMinutesFromMidnight += 24 * 60;
     }
     
-    const timelineStartMinutes = TIMELINE_START_HOUR * 60; // 6 AM = 360 minutes
-    const timelineEndMinutes = (TIMELINE_START_HOUR + 24) * 60; // 6 AM next day = 1800 minutes
+    // Timeline starts at 6 AM (360 minutes from midnight)
+    const timelineStartMinutes = TIMELINE_START_HOUR * 60;
+    const timelineEndMinutes = timelineStartMinutes + (24 * 60); // +24 hours
     
-    // Calculate top position
-    let topPosition = (startMinutes - timelineStartMinutes) * PIXELS_PER_MINUTE;
+    // Clamp block to visible timeline
+    const visibleStartMinutes = Math.max(startMinutesFromMidnight, timelineStartMinutes);
+    const visibleEndMinutes = Math.min(endMinutesFromMidnight, timelineEndMinutes);
     
-    // For blocks that start before our timeline but end within it
-    if (startMinutes < timelineStartMinutes) {
-      topPosition = 0; // Start at top of timeline
-      const endMinutes = start.getHours() * 60 + start.getMinutes() + actualDurationMinutes;
-      const visibleDuration = Math.min(endMinutes - timelineStartMinutes, actualDurationMinutes);
-      const height = Math.max(visibleDuration * PIXELS_PER_MINUTE, 40);
-      return { top: 0, height };
-    }
+    // Calculate visible duration (minimum 5 minutes)
+    const visibleDurationMinutes = Math.max(visibleEndMinutes - visibleStartMinutes, 5);
     
-    // Calculate height ensuring it doesn't overflow and has minimum readable height
-    const maxHeight = (timelineEndMinutes - startMinutes) * PIXELS_PER_MINUTE;
-    const calculatedHeight = actualDurationMinutes * PIXELS_PER_MINUTE;
-    const height = Math.max(Math.min(calculatedHeight, maxHeight), 40);
+    // Calculate top position (relative to timeline start)
+    const topPosition = (visibleStartMinutes - timelineStartMinutes) * PIXELS_PER_MINUTE;
+    
+    // Calculate height (minimum 40px for visibility)
+    const height = Math.max(visibleDurationMinutes * PIXELS_PER_MINUTE, 40);
     
     return { top: topPosition, height };
   };

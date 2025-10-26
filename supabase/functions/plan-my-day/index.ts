@@ -324,92 +324,113 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
       throw new Error('Failed to parse AI response as JSON');
     }
 
-    // Helper function to format date with Europe/Bratislava timezone offset
+    // Helper function to format dates with Europe/Bratislava timezone offset
     const formatWithTimezoneOffset = (date: Date): string => {
-      // Determine if we're in DST (roughly Apr-Sep = +02:00, Oct-Mar = +01:00)
-      const month = date.getMonth();
-      const isDST = month >= 3 && month <= 8; // Apr-Sep (months 3-8)
+      // Detect DST (Daylight Saving Time) for Europe/Bratislava
+      const jan = new Date(date.getFullYear(), 0, 1);
+      const jul = new Date(date.getFullYear(), 6, 1);
+      const stdOffset = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+      const isDST = date.getTimezoneOffset() < stdOffset;
       const offset = isDST ? '+02:00' : '+01:00';
       
-      // Format: YYYY-MM-DDTHH:mm:ss+01:00
       const year = date.getFullYear();
-      const monthStr = String(date.getMonth() + 1).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       const hours = String(date.getHours()).padStart(2, '0');
       const minutes = String(date.getMinutes()).padStart(2, '0');
       const seconds = String(date.getSeconds()).padStart(2, '0');
       
-      return `${year}-${monthStr}-${day}T${hours}:${minutes}:${seconds}${offset}`;
+      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offset}`;
     };
 
-    // Post-processing validation and fixes
+    // Post-process: Apply timezone offsets to ALL blocks first
     blocks = blocks.map((block: any) => {
-      let startDate = new Date(block.start_at);
-      let endDate = new Date(block.end_at);
+      const start = new Date(block.start_at);
+      const end = new Date(block.end_at);
       
-      // Ensure proper timezone offset format (not Z or +00:00)
-      if (block.start_at.endsWith('Z') || block.start_at.includes('+00:00')) {
-        console.warn(`Fixing timezone for: "${block.title}"`);
-        block.start_at = formatWithTimezoneOffset(startDate);
-        block.end_at = formatWithTimezoneOffset(endDate);
-        startDate = new Date(block.start_at);
-        endDate = new Date(block.end_at);
-      }
+      // Apply timezone offset to ensure consistent format
+      block.start_at = formatWithTimezoneOffset(start);
+      block.end_at = formatWithTimezoneOffset(end);
       
-      const durationMs = endDate.getTime() - startDate.getTime();
-      const durationHours = durationMs / (1000 * 60 * 60);
+      return block;
+    });
+
+    // Fix 0-duration blocks
+    blocks = blocks.map((block: any) => {
+      const start = new Date(block.start_at);
+      const end = new Date(block.end_at);
+      const durationMs = end.getTime() - start.getTime();
       
-      // Fix 0-duration or negative duration blocks
       if (durationMs <= 0) {
         console.warn(`Fixing 0-duration block: "${block.title}"`);
-        endDate = new Date(startDate.getTime() + 30 * 60 * 1000);
-        block.end_at = formatWithTimezoneOffset(endDate);
-      }
-      
-      // Special handling for sleep blocks - must span overnight (~8 hours)
-      if (block.type === 'sleep' || block.title.toLowerCase().includes('sleep') || block.title.toLowerCase().includes('lights')) {
-        if (durationHours < 6 || durationHours > 10) {
-          console.warn(`Fixing sleep block duration: "${block.title}" (was ${durationHours.toFixed(1)}h)`);
-          // Sleep: 22:00 today -> 06:00 tomorrow
-          const sleepStart = new Date(startDate);
-          sleepStart.setHours(22, 0, 0, 0);
-          const sleepEnd = new Date(sleepStart);
-          sleepEnd.setDate(sleepEnd.getDate() + 1);
-          sleepEnd.setHours(6, 0, 0, 0);
-          block.start_at = formatWithTimezoneOffset(sleepStart);
-          block.end_at = formatWithTimezoneOffset(sleepEnd);
-          console.log(`Fixed sleep: ${block.start_at} -> ${block.end_at}`);
-        }
+        const fixedEnd = new Date(start.getTime() + 30 * 60 * 1000);
+        block.end_at = formatWithTimezoneOffset(fixedEnd);
       }
       
       return block;
     });
 
-    // Ensure sleep block exists (22:00 -> 06:00 next day)
-    const hasSleep = blocks.some((b: any) => 
+    // Validate and fix sleep block
+    const sleepBlock = blocks.find((b: any) => 
       b.type === 'sleep' || 
       b.title.toLowerCase().includes('sleep') || 
       b.title.toLowerCase().includes('lights')
     );
-    
-    if (!hasSleep) {
+
+    if (sleepBlock) {
+      const sleepStart = new Date(sleepBlock.start_at);
+      const sleepEnd = new Date(sleepBlock.end_at);
+      const sleepDurationHours = (sleepEnd.getTime() - sleepStart.getTime()) / (1000 * 60 * 60);
+      
+      // If sleep duration is wrong, fix it to be 8 hours from 22:00 to 06:00 next day
+      if (sleepDurationHours < 6 || sleepDurationHours > 10) {
+        console.warn(`Fixing sleep block duration: "${sleepBlock.title}" (was ${sleepDurationHours.toFixed(1)}h)`);
+        const sleepStartDate = new Date(today);
+        sleepStartDate.setHours(22, 0, 0, 0);
+        
+        const sleepEndDate = new Date(sleepStartDate);
+        sleepEndDate.setDate(sleepEndDate.getDate() + 1);
+        sleepEndDate.setHours(6, 0, 0, 0);
+        
+        sleepBlock.start_at = formatWithTimezoneOffset(sleepStartDate);
+        sleepBlock.end_at = formatWithTimezoneOffset(sleepEndDate);
+      }
+    }
+
+    // Add sleep block if missing
+    if (!sleepBlock) {
       console.warn('No sleep block found - adding default sleep block');
-      const sleepStart = new Date(today);
-      sleepStart.setHours(22, 0, 0, 0);
-      const sleepEnd = new Date(sleepStart);
-      sleepEnd.setDate(sleepEnd.getDate() + 1);
-      sleepEnd.setHours(6, 0, 0, 0);
+      const sleepStartDate = new Date(today);
+      sleepStartDate.setHours(22, 0, 0, 0);
+      const sleepEndDate = new Date(sleepStartDate);
+      sleepEndDate.setDate(sleepEndDate.getDate() + 1);
+      sleepEndDate.setHours(6, 0, 0, 0);
       
       blocks.push({
         title: 'Sleep',
-        start_at: formatWithTimezoneOffset(sleepStart),
-        end_at: formatWithTimezoneOffset(sleepEnd),
+        start_at: formatWithTimezoneOffset(sleepStartDate),
+        end_at: formatWithTimezoneOffset(sleepEndDate),
         type: 'sleep',
         status: 'planned',
         task_id: null,
         ritual_id: null,
         notes: 'Target: 8 hours'
       });
+    }
+
+    // Sort blocks by start time
+    blocks.sort((a: any, b: any) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
+
+    // Fix overlapping blocks
+    for (let i = 0; i < blocks.length - 1; i++) {
+      const currentEnd = new Date(blocks[i].end_at);
+      const nextStart = new Date(blocks[i + 1].start_at);
+      
+      if (currentEnd > nextStart) {
+        console.warn(`Overlap detected: ${blocks[i].title} (ends ${currentEnd.toISOString()}) overlaps with ${blocks[i + 1].title} (starts ${nextStart.toISOString()})`);
+        // Fix: adjust current block's end time to match next block's start
+        blocks[i].end_at = blocks[i + 1].start_at;
+      }
     }
 
     // Delete existing planned blocks for today
