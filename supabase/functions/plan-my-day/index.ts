@@ -170,7 +170,8 @@ TRAINING & EXERCISE (6x per week):
 
 SPORTS SCHEDULE (HARD-FIXED):
 - Hockey team: HK Spišská Nová Ves
-- Games: Use EXACT times from events table (e.g., 15:50-19:10)
+- Sunday games: Typically 16:00-18:00 (4 PM to 6 PM) - schedule automatically on Sundays unless event table has different time
+- Games: Use EXACT times from events table if available (e.g., 15:50-19:10), otherwise use default Sunday 16:00-18:00
 - CRITICAL: Display hockey blocks using the EXACT start_at and end_at times from events - do NOT round to nearest hour
 - Add ±10min pre/post buffers for hockey games if not already included
 - Verify schedule daily from feed
