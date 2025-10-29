@@ -60,6 +60,14 @@ export const TimelineView = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Helper function to calculate block duration (defined before usage)
+  const getBlockDuration = (block: TimeBlock) => {
+    const start = parseISO(block.start_at);
+    const end = parseISO(block.end_at);
+    const durationMs = end.getTime() - start.getTime();
+    return Math.max(durationMs / (1000 * 60), 1); // Return minutes, minimum 1
+  };
+
   // Group micro-blocks into routine containers
   const groupMicroBlocks = (blocks: TimeBlock[]): TimelineItem[] => {
     if (!blocks || blocks.length === 0) return [];
@@ -201,13 +209,6 @@ export const TimelineView = () => {
     const date = new Date(isoString);
     // Use local time components (JavaScript handles timezone offset automatically)
     return format(date, 'HH:mm');
-  };
-
-  const getBlockDuration = (block: TimeBlock) => {
-    const start = parseISO(block.start_at);
-    const end = parseISO(block.end_at);
-    const durationMs = end.getTime() - start.getTime();
-    return Math.max(durationMs / (1000 * 60), 1); // Return minutes, minimum 1
   };
 
   const getBlockStyling = (durationMinutes: number) => {
