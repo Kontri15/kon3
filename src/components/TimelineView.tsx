@@ -7,6 +7,7 @@ import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BlockDetailDialog } from "./BlockDetailDialog";
+import { RoutineContainerComponent } from "./RoutineContainer";
 import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +23,17 @@ interface TimeBlock {
   ritual_id?: string;
   notes?: string;
 }
+
+interface RoutineContainer {
+  id: string;
+  title: string;
+  start_at: string;
+  end_at: string;
+  blocks: TimeBlock[];
+  type: 'routine';
+}
+
+type TimelineItem = TimeBlock | RoutineContainer;
 
 interface DragState {
   blockId: string;
@@ -47,12 +59,106 @@ export const TimelineView = () => {
   const [hoveredBlock, setHoveredBlock] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Group micro-blocks into routine containers
+  const groupMicroBlocks = (blocks: TimeBlock[]): TimelineItem[] => {
+    if (!blocks || blocks.length === 0) return [];
+    
+    const sortedBlocks = [...blocks].sort((a, b) => 
+      new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+    );
+    
+    const grouped: TimelineItem[] = [];
+    let currentGroup: TimeBlock[] = [];
+    let groupStart: string | null = null;
+    
+    const inferRoutineName = (blocks: TimeBlock[]): string => {
+      const firstBlockTime = new Date(blocks[0].start_at);
+      const hour = firstBlockTime.getHours();
+      
+      if (hour >= 6 && hour < 9) return "Morning Routine";
+      if (hour >= 21 && hour < 23) return "Evening Wind-down";
+      if (blocks.some(b => b.type === 'meal')) return "Meal Prep";
+      return "Quick Tasks";
+    };
+    
+    sortedBlocks.forEach((block, index) => {
+      const duration = getBlockDuration(block);
+      const isLastBlock = index === sortedBlocks.length - 1;
+      
+      // Check if next block is consecutive and also micro
+      const nextBlock = sortedBlocks[index + 1];
+      const isNextConsecutive = nextBlock && 
+        new Date(nextBlock.start_at).getTime() === new Date(block.end_at).getTime();
+      const isNextMicro = nextBlock && getBlockDuration(nextBlock) < 15;
+      
+      if (duration < 15 && (isNextConsecutive && isNextMicro)) {
+        if (currentGroup.length === 0) groupStart = block.start_at;
+        currentGroup.push(block);
+      } else if (duration < 15 && currentGroup.length > 0) {
+        // Last micro block in a group
+        currentGroup.push(block);
+        
+        if (currentGroup.length >= 3) {
+          grouped.push({
+            id: `routine-${groupStart}`,
+            title: inferRoutineName(currentGroup),
+            start_at: groupStart!,
+            end_at: currentGroup[currentGroup.length - 1].end_at,
+            blocks: currentGroup,
+            type: 'routine'
+          });
+        } else {
+          grouped.push(...currentGroup);
+        }
+        
+        currentGroup = [];
+        groupStart = null;
+      } else {
+        // Flush current group if exists
+        if (currentGroup.length >= 3) {
+          grouped.push({
+            id: `routine-${groupStart}`,
+            title: inferRoutineName(currentGroup),
+            start_at: groupStart!,
+            end_at: currentGroup[currentGroup.length - 1].end_at,
+            blocks: currentGroup,
+            type: 'routine'
+          });
+        } else if (currentGroup.length > 0) {
+          grouped.push(...currentGroup);
+        }
+        
+        grouped.push(block);
+        currentGroup = [];
+        groupStart = null;
+      }
+      
+      // Handle last block edge case
+      if (isLastBlock && currentGroup.length > 0) {
+        if (currentGroup.length >= 3) {
+          grouped.push({
+            id: `routine-${groupStart}`,
+            title: inferRoutineName(currentGroup),
+            start_at: groupStart!,
+            end_at: currentGroup[currentGroup.length - 1].end_at,
+            blocks: currentGroup,
+            type: 'routine'
+          });
+        } else {
+          grouped.push(...currentGroup);
+        }
+      }
+    });
+    
+    return grouped;
+  };
   
   const hours = Array.from({ length: 24 }, (_, i) => (i + 6) % 24); // 6 AM to 6 AM next day
   const PIXELS_PER_MINUTE = 2; // 120px per hour for better readability
   const TIMELINE_START_HOUR = 6; // 6 AM
   
-  const { data: blocks = [], isLoading } = useQuery({
+  const { data: rawBlocks = [], isLoading } = useQuery({
     queryKey: ['blocks', new Date().toDateString()],
     queryFn: async () => {
       const now = new Date();
@@ -87,6 +193,9 @@ export const TimelineView = () => {
     },
     refetchInterval: 30000,
   });
+
+  const timelineItems = groupMicroBlocks(rawBlocks);
+  const blocks = rawBlocks; // Keep original blocks for compatibility with existing logic
 
   const formatTimeFromLocal = (isoString: string) => {
     const date = new Date(isoString);
@@ -631,7 +740,7 @@ export const TimelineView = () => {
               ))}
             </div>
             
-            {/* Timeline container with blocks */}
+            {/* Timeline container with items (blocks or routine containers) */}
             <div className="flex-1 relative border-l border-border" style={{ height: `${24 * 60 * PIXELS_PER_MINUTE}px` }}>
               {/* Time-of-day background sections */}
               {hours.map((hour, index) => (
@@ -663,8 +772,37 @@ export const TimelineView = () => {
                 />
               ))}
               
-              {/* Blocks */}
-              {blocks.map((block) => {
+              {/* Blocks and Routine Containers */}
+              {timelineItems.map((item) => {
+                // Handle routine containers
+                if ('blocks' in item && item.type === 'routine') {
+                  const { top, height, styling } = getBlockPosition({
+                    ...item.blocks[0],
+                    start_at: item.start_at,
+                    end_at: item.end_at
+                  });
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="absolute left-0 right-0"
+                      style={{
+                        top: `${top}px`,
+                        height: `${height}px`,
+                        zIndex: 20,
+                        padding: '0 4px'
+                      }}
+                    >
+                      <RoutineContainerComponent 
+                        routine={item}
+                        onBlockClick={handleBlockClick}
+                      />
+                    </div>
+                  );
+                }
+
+                // Handle regular blocks
+                const block = item as TimeBlock;
                 const { top, height, styling } = getBlockPosition(block);
                 const duration = getBlockDuration(block);
                 const isHovered = hoveredBlock === block.id;

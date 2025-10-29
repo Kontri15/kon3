@@ -1,16 +1,36 @@
 import { Navigation } from "@/components/Navigation";
 import { TimelineView } from "@/components/TimelineView";
+import { PlanFeedbackChat } from "@/components/PlanFeedbackChat";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { Sparkles, MessageSquare, ChevronDown } from "lucide-react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 const Today = () => {
   const [isPlanning, setIsPlanning] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch current blocks for chat feedback
+  const { data: currentBlocks = [] } = useQuery({
+    queryKey: ['blocks'],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('blocks')
+        .select('*')
+        .gte('start_at', `${today}T00:00:00`)
+        .lt('start_at', `${today}T23:59:59`)
+        .order('start_at');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const handlePlanDay = async () => {
     setIsPlanning(true);
@@ -40,22 +60,77 @@ const Today = () => {
     }
   };
 
+  const handleApplyChanges = async (newBlocks: any[]) => {
+    try {
+      // Delete existing blocks for today
+      const today = new Date().toISOString().split('T')[0];
+      await supabase
+        .from('blocks')
+        .delete()
+        .gte('start_at', `${today}T00:00:00`)
+        .lt('start_at', `${today}T23:59:59`);
+
+      // Insert new blocks
+      const { error } = await supabase
+        .from('blocks')
+        .insert(newBlocks);
+
+      if (error) throw error;
+
+      // Refresh blocks
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+      
+      toast({
+        title: "Schedule updated",
+        description: "Your changes have been applied",
+      });
+    } catch (error) {
+      console.error('Error applying changes:', error);
+      toast({
+        title: "Update failed",
+        description: error instanceof Error ? error.message : "Failed to update schedule",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <Navigation />
-          <Button 
-            onClick={handlePlanDay} 
-            disabled={isPlanning}
-            size="lg"
-            className="gap-2"
-          >
-            <Sparkles className="w-4 h-4" />
-            {isPlanning ? "Planning..." : "Plan My Day"}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setIsChatOpen(!isChatOpen)}
+              variant="outline"
+              size="lg"
+              className="gap-2"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Feedback
+            </Button>
+            <Button 
+              onClick={handlePlanDay} 
+              disabled={isPlanning}
+              size="lg"
+              className="gap-2"
+            >
+              <Sparkles className="w-4 h-4" />
+              {isPlanning ? "Planning..." : "Plan My Day"}
+            </Button>
+          </div>
         </div>
+        
         <TimelineView />
+        
+        <Collapsible open={isChatOpen} onOpenChange={setIsChatOpen} className="mt-6">
+          <CollapsibleContent>
+            <PlanFeedbackChat 
+              currentBlocks={currentBlocks}
+              onApplyChanges={handleApplyChanges}
+            />
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </div>
   );
