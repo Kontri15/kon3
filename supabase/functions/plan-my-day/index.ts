@@ -61,6 +61,20 @@ interface WhoopData {
   sleep_perf_pct?: number;
 }
 
+interface DailyHistory {
+  date: string;
+  lunch_meal?: string;
+  dinner_meal?: string;
+  workout_type?: string;
+  workout_exercises?: any;
+  workout_completed?: boolean;
+  recovery_pct?: number;
+  hrv_ms?: number;
+  sleep_hours?: number;
+  tasks_completed?: number;
+  total_work_minutes?: number;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -76,18 +90,30 @@ Deno.serve(async (req) => {
     const userId = '00000000-0000-0000-0000-000000000001';
     console.log('Planning day (single-user mode)');
 
+    // Build AI prompt
+    const today = new Date();
+
+    // Calculate date range for history (last 7 days)
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+
     // Fetch all required data (all optional - will work with empty DB)
-    const [tasksRes, ritualsRes, eventsRes, profileRes, whoopRes] = await Promise.all([
+    const [tasksRes, ritualsRes, eventsRes, profileRes, whoopRes, historyRes, recentBlocksRes] = await Promise.all([
       supabase.from('tasks').select('*').eq('status', 'todo'),
       supabase.from('rituals').select('*'),
       supabase.from('events').select('*').gte('start_at', new Date().toISOString()),
       supabase.from('profiles').select('*').single(),
-      supabase.from('whoop_daily').select('*').eq('date', new Date().toISOString().split('T')[0]).single()
+      supabase.from('whoop_daily').select('*').eq('date', new Date().toISOString().split('T')[0]).single(),
+      supabase.from('daily_history').select('*').gte('date', sevenDaysAgoStr).order('date', { ascending: false }),
+      supabase.from('blocks').select('*').gte('start_at', sevenDaysAgo.toISOString()).in('type', ['meal', 'ritual']).order('start_at', { ascending: false })
     ]);
 
     const tasks: Task[] = tasksRes.data || [];
     const rituals: Ritual[] = ritualsRes.data || [];
     const events: Event[] = eventsRes.data || [];
+    const history: DailyHistory[] = historyRes.data || [];
+    const recentBlocks = recentBlocksRes.data || [];
     
     // Use database profile or sensible defaults
     const profileData = profileRes.data;
@@ -109,15 +135,13 @@ Deno.serve(async (req) => {
       sleep_perf_pct: whoopData?.sleep_perf_pct
     };
 
-    console.log(`Loaded: ${tasks.length} tasks, ${rituals.length} rituals, ${events.length} events`);
+    console.log(`Loaded: ${tasks.length} tasks, ${rituals.length} rituals, ${events.length} events, ${history.length} history entries`);
     
     // If no data exists, AI will create a balanced template day
     if (tasks.length === 0 && rituals.length === 0 && events.length === 0) {
       console.log('No tasks/rituals/events found - will generate template schedule');
     }
 
-    // Build AI prompt
-    const today = new Date();
     const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][today.getDay()];
     const isWorkday = today.getDay() >= 1 && today.getDay() <= 5;
     const isFriday = today.getDay() === 5;
@@ -134,7 +158,92 @@ Deno.serve(async (req) => {
     const buildModeStart = `${String(wakeHours).padStart(2, '0')}:10`;
     const buildModeEnd = `${String((wakeHours + 2) % 24).padStart(2, '0')}:00`;
     
+    // Build historical context strings
+    const mealHistory = history.length > 0 
+      ? history.map(h => `${h.date}: Lunch=${h.lunch_meal || 'N/A'}, Dinner=${h.dinner_meal || 'N/A'}`).join('\n')
+      : 'No meal history available';
+    
+    const workoutHistory = history.length > 0
+      ? history.map(h => `${h.date}: ${h.workout_type || 'Rest'} ${h.workout_completed ? '✓' : '✗'}`).join('\n')
+      : 'No workout history available';
+
+    // Extract recent meals to avoid repetition
+    const recentLunchMeals = history.slice(0, 3).map(h => h.lunch_meal).filter(Boolean);
+    const recentDinnerMeals = history.slice(0, 3).map(h => h.dinner_meal).filter(Boolean);
+
     const systemPrompt = `You are ChronoPilot's scheduling engine. Plan a personalized day for ${today.toISOString().split('T')[0]} (${dayOfWeek}) in Europe/Bratislava timezone.
+
+REAL DAY EXAMPLE (for reference - match this level of granularity):
+06:00 Wake
+06:00–06:02 30 push-ups (2 min) - Fixed
+06:02–06:04 Brush my teeth - Fixed
+06:04–06:06 Get dressed - Fixed
+06:06–06:08 Weight my self - Fixed
+06:08–06:14 Think through "Jojka" (6 min)
+06:14–06:20 Think through tasking (6 min)
+06:20–06:30 Spinal rotation exercises (10 min)
+06:30–06:55 Work on presentation (25 min)
+06:55–07:00 Slice potatoes (5 min)
+07:00–07:30 Run (30 min) - Fixed
+07:30–07:40 Shower (10 min) - Fixed
+07:40–07:50 Finish cooking (done by 07:50) - Fixed
+07:50–08:00 Read (to 08:00) - Fixed
+08:00–08:10 Pack
+08:10–08:30 Commute to office
+08:30–09:00 Team stand-up ("Porada")
+09:00–09:30 Matica
+09:30–10:00 Mid-year goals ("Polročné ciele")
+10:00–10:30 Publish updates ("Nahodiť novinky")
+10:30–11:00 Resize MagicStyle
+11:00–12:00 Sofi Heureka
+12:00–12:45 Lunch: Potatoes with chicken breast (fixed)
+12:45–13:30 Matej – video
+13:30–14:00 Matica
+14:00–14:30 MediaToolKit with Idka
+14:30–15:00 Matica meeting
+15:00–15:45 Ad hoc
+15:45–16:00 Plans for tomorrow
+16:00–16:45 Commute home
+16:50–16:55 Walk/commute to gym
+17:00–18:25 Gym | Push (fixed, finish by 18:30)
+18:25–18:30 Return home
+18:35–19:05 Dinner (bread with ham, cheese, butter, vegetables) + Omega-3 & D3 (+ Creatine post-workout) — fixed, done by 19:30
+19:35–20:00 Walk (25 min) — fixed, done by 20:00
+20:00–21:00 If needed: work (max 1h); otherwise reading/podcast/business videos — fixed ceiling 21:30
+21:30–21:40 Yoga (10 min) (fixed)
+21:40–21:50 Meditation (10 min) (fixed)
+21:50–21:53 Brush teeth (3 min) (fixed)
+by 22:00 Sleep (fixed)
+
+CRITICAL: Match this granularity! Include:
+- 2-6 minute micro-blocks for morning routine (push-ups, brush teeth, get dressed, weigh self)
+- 5-10 minute meal prep blocks (slice potatoes, finish cooking)
+- Specific thinking/planning blocks (6min each)
+- "Plans for tomorrow" block (10-15min before evening commute)
+- "Ad hoc" buffer blocks for unexpected work
+- Evening walk (25min FIXED after dinner, around 19:35-20:00)
+- Pre-sleep routine broken into yoga, meditation, brush teeth
+
+LAST 7 DAYS HISTORY:
+
+Meals eaten:
+${mealHistory}
+
+Workout cycle tracking:
+${workoutHistory}
+
+MEAL ROTATION RULES:
+- Recent lunches (avoid repeating): ${recentLunchMeals.join(', ') || 'none'}
+- Recent dinners (avoid repeating): ${recentDinnerMeals.join(', ') || 'none'}
+- Don't repeat same base OR main within last 3 days
+- Available bases: rice, potatoes, fries, pasta
+- Available mains: salmon, steak, chicken, turkey, tuna, legumes
+- MUST specify lunch as "base with main" (e.g., "Rice with salmon")
+
+WORKOUT PROGRESSION:
+${history.length > 0 ? `- Last workout: ${history[0].workout_type || 'N/A'} ${history[0].workout_completed ? '✓' : '✗'}
+- Cycle position: Use Push → Pull → Legs → Active → Push → Pull → Legs pattern
+- Progressive overload: If last 2 same workouts successful → suggest +5kg on main lifts` : '- Starting fresh cycle: Push → Pull → Legs → Active'}
 
 USER PROFILE & DAILY ROUTINE (ALL TIMES IN Europe/Bratislava timezone):
 - Wake time: ${wakeTime} EXACTLY

@@ -19,6 +19,7 @@ export type Database = {
           created_at: string | null
           end_at: string
           id: string
+          meal_details: string | null
           notes: string | null
           ritual_id: string | null
           start_at: string
@@ -28,11 +29,13 @@ export type Database = {
           type: Database["public"]["Enums"]["block_type"]
           updated_at: string | null
           user_id: string
+          workout_details: Json | null
         }
         Insert: {
           created_at?: string | null
           end_at: string
           id?: string
+          meal_details?: string | null
           notes?: string | null
           ritual_id?: string | null
           start_at: string
@@ -42,11 +45,13 @@ export type Database = {
           type: Database["public"]["Enums"]["block_type"]
           updated_at?: string | null
           user_id: string
+          workout_details?: Json | null
         }
         Update: {
           created_at?: string | null
           end_at?: string
           id?: string
+          meal_details?: string | null
           notes?: string | null
           ritual_id?: string | null
           start_at?: string
@@ -56,6 +61,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["block_type"]
           updated_at?: string | null
           user_id?: string
+          workout_details?: Json | null
         }
         Relationships: [
           {
@@ -73,6 +79,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      daily_history: {
+        Row: {
+          created_at: string | null
+          date: string
+          dinner_meal: string | null
+          hrv_ms: number | null
+          id: string
+          lunch_meal: string | null
+          notes: string | null
+          recovery_pct: number | null
+          sleep_hours: number | null
+          tasks_completed: number | null
+          total_work_minutes: number | null
+          updated_at: string | null
+          user_id: string
+          workout_completed: boolean | null
+          workout_exercises: Json | null
+          workout_type: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          dinner_meal?: string | null
+          hrv_ms?: number | null
+          id?: string
+          lunch_meal?: string | null
+          notes?: string | null
+          recovery_pct?: number | null
+          sleep_hours?: number | null
+          tasks_completed?: number | null
+          total_work_minutes?: number | null
+          updated_at?: string | null
+          user_id: string
+          workout_completed?: boolean | null
+          workout_exercises?: Json | null
+          workout_type?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          dinner_meal?: string | null
+          hrv_ms?: number | null
+          id?: string
+          lunch_meal?: string | null
+          notes?: string | null
+          recovery_pct?: number | null
+          sleep_hours?: number | null
+          tasks_completed?: number | null
+          total_work_minutes?: number | null
+          updated_at?: string | null
+          user_id?: string
+          workout_completed?: boolean | null
+          workout_exercises?: Json | null
+          workout_type?: string | null
+        }
+        Relationships: []
       }
       events: {
         Row: {
