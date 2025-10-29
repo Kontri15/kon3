@@ -94,20 +94,27 @@ export const TimelineView = () => {
       const duration = getBlockDuration(block);
       const isLastBlock = index === sortedBlocks.length - 1;
       
-      // Check if next block is consecutive and also micro
+      // Check if next block is close by (within 5 minutes gap) and also micro
       const nextBlock = sortedBlocks[index + 1];
-      const isNextConsecutive = nextBlock && 
-        new Date(nextBlock.start_at).getTime() === new Date(block.end_at).getTime();
+      const gapToNext = nextBlock 
+        ? (new Date(nextBlock.start_at).getTime() - new Date(block.end_at).getTime()) / 60000 
+        : Infinity;
+      const isNextClose = gapToNext <= 5; // Allow 5 minute gaps
       const isNextMicro = nextBlock && getBlockDuration(nextBlock) < 15;
       
-      if (duration < 15 && (isNextConsecutive && isNextMicro)) {
+      // Micro blocks are < 15 minutes
+      const isMicro = duration < 15;
+      
+      if (isMicro && isNextClose && isNextMicro) {
+        // Start or continue a group
         if (currentGroup.length === 0) groupStart = block.start_at;
         currentGroup.push(block);
-      } else if (duration < 15 && currentGroup.length > 0) {
-        // Last micro block in a group
+      } else if (isMicro && currentGroup.length > 0) {
+        // Last micro block in a group - add it and close group
         currentGroup.push(block);
         
-        if (currentGroup.length >= 3) {
+        // Only create routine container if 2+ blocks (lowered from 3)
+        if (currentGroup.length >= 2) {
           grouped.push({
             id: `routine-${groupStart}`,
             title: inferRoutineName(currentGroup),
@@ -123,8 +130,9 @@ export const TimelineView = () => {
         currentGroup = [];
         groupStart = null;
       } else {
+        // Not a micro block or doesn't fit group pattern
         // Flush current group if exists
-        if (currentGroup.length >= 3) {
+        if (currentGroup.length >= 2) {
           grouped.push({
             id: `routine-${groupStart}`,
             title: inferRoutineName(currentGroup),
@@ -137,6 +145,7 @@ export const TimelineView = () => {
           grouped.push(...currentGroup);
         }
         
+        // Add this non-micro block
         grouped.push(block);
         currentGroup = [];
         groupStart = null;
@@ -144,7 +153,7 @@ export const TimelineView = () => {
       
       // Handle last block edge case
       if (isLastBlock && currentGroup.length > 0) {
-        if (currentGroup.length >= 3) {
+        if (currentGroup.length >= 2) {
           grouped.push({
             id: `routine-${groupStart}`,
             title: inferRoutineName(currentGroup),
@@ -157,6 +166,13 @@ export const TimelineView = () => {
           grouped.push(...currentGroup);
         }
       }
+    });
+    
+    console.log('🔍 Grouped micro-blocks:', {
+      totalBlocks: sortedBlocks.length,
+      groupedItems: grouped.length,
+      routineContainers: grouped.filter(item => 'blocks' in item).length,
+      individualBlocks: grouped.filter(item => !('blocks' in item)).length
     });
     
     return grouped;
