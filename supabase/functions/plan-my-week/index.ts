@@ -128,7 +128,7 @@ Return ONLY a JSON array of blocks with this exact structure:
       .from('blocks')
       .insert(blocks.map((block: any) => ({
         ...block,
-        user_id: "00000000-0000-0000-0000-000000000000",
+        user_id: "00000000-0000-0000-0000-000000000001",
         status: "planned",
       })));
 

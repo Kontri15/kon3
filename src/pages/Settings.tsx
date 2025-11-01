@@ -8,14 +8,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
+import { SINGLE_USER_ID } from "@/lib/constants";
 
 const Settings = () => {
   const [searchParams] = useSearchParams();
   const [isWhoopConnected, setIsWhoopConnected] = useState(false);
   const [isCheckingWhoop, setIsCheckingWhoop] = useState(true);
-
-  // Use fixed user ID for single-user app
-  const SINGLE_USER_ID = 'single-user';
 
   useEffect(() => {
     checkWhoopConnection();

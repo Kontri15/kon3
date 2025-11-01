@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { SINGLE_USER_ID } from "@/lib/constants";
 
 interface BlockCreateDialogProps {
   open: boolean;
@@ -44,7 +45,7 @@ export function BlockCreateDialog({ open, onOpenChange, defaultDate }: BlockCrea
         end_at: endAt,
         notes: formData.notes || null,
         status: "planned",
-        user_id: "00000000-0000-0000-0000-000000000000", // placeholder
+        user_id: SINGLE_USER_ID,
       });
 
       if (error) throw error;

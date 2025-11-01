@@ -14,7 +14,7 @@ serve(async (req) => {
   try {
     const body = await req.json();
     // Default to single-user ID if not provided
-    const user_id = body.user_id || 'single-user';
+    const user_id = body.user_id || '00000000-0000-0000-0000-000000000001';
 
     console.log('Starting WHOOP sync for user:', user_id);
 
