@@ -3,7 +3,7 @@ import { Navigation } from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Target, Zap, Sparkles } from "lucide-react";
+import { Plus, Calendar, Target, Zap, Sparkles, CheckCircle2, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { TaskCreateDialog } from "@/components/TaskCreateDialog";
@@ -23,6 +23,7 @@ interface Task {
   actual_min?: number;
   status?: string;
   tags?: string[];
+  updated_at?: string;
 }
 
 const Tasks = () => {
@@ -42,6 +43,24 @@ const Tasks = () => {
         .select('*')
         .eq('status', 'todo')
         .order('priority', { ascending: false });
+      
+      if (error) throw error;
+      return data as Task[];
+    },
+  });
+
+  const { data: completedTasks = [], isLoading: isLoadingCompleted } = useQuery({
+    queryKey: ['completed-tasks'],
+    queryFn: async () => {
+      const fourteenDaysAgo = new Date();
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+      
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('status', 'done')
+        .gte('updated_at', fourteenDaysAgo.toISOString())
+        .order('updated_at', { ascending: false });
       
       if (error) throw error;
       return data as Task[];
@@ -204,6 +223,73 @@ const Tasks = () => {
                 </div>
               </Card>
               ))}
+            </div>
+          )}
+
+          {/* Completed Tasks Section */}
+          {!isLoadingCompleted && completedTasks.length > 0 && (
+            <div className="space-y-4 mt-12">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-success" />
+                <h2 className="text-xl font-semibold">Completed Tasks (Last 14 Days)</h2>
+                <Badge variant="secondary" className="ml-2">{completedTasks.length}</Badge>
+              </div>
+              
+              <div className="space-y-3">
+                {completedTasks.map((task) => (
+                  <Card 
+                    key={task.id} 
+                    className="glass border-border/50 p-5 hover:border-success/30 transition-all cursor-pointer opacity-75"
+                    onClick={() => handleTaskClick(task)}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-5 h-5 text-success" />
+                            <h3 className="text-lg font-semibold line-through decoration-success/50">{task.title}</h3>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {task.project && (
+                              <Badge variant="outline" className="text-xs">
+                                {task.project}
+                              </Badge>
+                            )}
+                            {task.tags?.map((tag) => (
+                              <Badge key={tag} variant="secondary" className="text-xs bg-secondary/20">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          Completed: {task.updated_at ? new Date(task.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Unknown"}
+                        </div>
+                        {task.actual_min && (
+                          <div className="flex items-center gap-1 text-success">
+                            <Clock className="w-4 h-4" />
+                            {task.actual_min}m actual
+                          </div>
+                        )}
+                        {task.est_min && (
+                          <div className="flex items-center gap-1">
+                            <Zap className="w-4 h-4" />
+                            {task.est_min}m estimated
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <Target className="w-4 h-4" />
+                          Impact: {task.impact}/5
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
 
