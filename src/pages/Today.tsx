@@ -1,17 +1,19 @@
 import { Navigation } from "@/components/Navigation";
 import { TimelineView } from "@/components/TimelineView";
 import { PlanFeedbackChat } from "@/components/PlanFeedbackChat";
+import { BlockCreateDialog } from "@/components/BlockCreateDialog";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Sparkles, MessageSquare, ChevronDown } from "lucide-react";
+import { Sparkles, MessageSquare, ChevronDown, Plus } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 const Today = () => {
   const [isPlanning, setIsPlanning] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -101,6 +103,15 @@ const Today = () => {
           <Navigation />
           <div className="flex gap-2">
             <Button 
+              onClick={() => setCreateDialogOpen(true)}
+              variant="outline"
+              size="lg"
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Block
+            </Button>
+            <Button 
               onClick={() => setIsChatOpen(!isChatOpen)}
               variant="outline"
               size="lg"
@@ -131,6 +142,11 @@ const Today = () => {
             />
           </CollapsibleContent>
         </Collapsible>
+
+        <BlockCreateDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+        />
       </div>
     </div>
   );

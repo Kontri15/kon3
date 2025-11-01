@@ -1,11 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { Calendar, CheckSquare, Settings, BarChart3, Zap } from "lucide-react";
+import { Calendar, CheckSquare, Settings, BarChart3, Zap, CalendarRange } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 const navItems = [
   { to: "/", icon: Calendar, label: "Today" },
   { to: "/tasks", icon: CheckSquare, label: "Tasks" },
+  { to: "/week", icon: CalendarRange, label: "Week" },
   { to: "/analytics", icon: BarChart3, label: "Analytics" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];

@@ -34,7 +34,11 @@ interface RoutineContainer {
 
 type TimelineItem = TimeBlock | RoutineContainer;
 
-export const TimelineView = () => {
+interface TimelineViewProps {
+  date?: Date;
+}
+
+export const TimelineView = ({ date }: TimelineViewProps = {}) => {
   const [selectedBlock, setSelectedBlock] = useState<TimeBlock | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [actualMinutes, setActualMinutes] = useState<string>("");
@@ -165,19 +169,19 @@ export const TimelineView = () => {
   const TIMELINE_START_HOUR = 6; // 6 AM
   
   const { data: rawBlocks = [], isLoading } = useQuery({
-    queryKey: ['blocks', new Date().toDateString()],
+    queryKey: ['blocks', date ? format(date, 'yyyy-MM-dd') : new Date().toDateString()],
     queryFn: async () => {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const nextDay = String(now.getDate() + 1).padStart(2, '0');
+      const targetDate = date || new Date();
+      const year = targetDate.getFullYear();
+      const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const day = String(targetDate.getDate()).padStart(2, '0');
+      const nextDay = String(targetDate.getDate() + 1).padStart(2, '0');
       
       // Detect DST for Europe/Bratislava
-      const jan = new Date(now.getFullYear(), 0, 1);
-      const jul = new Date(now.getFullYear(), 6, 1);
+      const jan = new Date(targetDate.getFullYear(), 0, 1);
+      const jul = new Date(targetDate.getFullYear(), 6, 1);
       const stdOffset = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
-      const isDST = now.getTimezoneOffset() < stdOffset;
+      const isDST = targetDate.getTimezoneOffset() < stdOffset;
       const offset = isDST ? '+02:00' : '+01:00';
       
       // Create ISO strings with proper timezone offset

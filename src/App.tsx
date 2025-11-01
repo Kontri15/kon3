@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Today from "./pages/Today";
 import Tasks from "./pages/Tasks";
+import Week from "./pages/Week";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -20,6 +21,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Today />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/week" element={<Week />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
