@@ -146,6 +146,10 @@ export default function Week() {
             </div>
           </div>
 
+          <div className="mb-3 p-3 bg-muted rounded-lg text-sm text-muted-foreground">
+            <p><strong>Weekly Planning:</strong> Generates gym sessions and meals only. Use "Plan My Day" on the Today page to schedule work, sleep, and other activities.</p>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex gap-2">
               <Select value={weekType} onValueChange={(value: any) => setWeekType(value)}>

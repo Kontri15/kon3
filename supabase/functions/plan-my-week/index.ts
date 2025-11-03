@@ -198,95 +198,92 @@ serve(async (req) => {
 
     const baselineLiftsJson = JSON.stringify(baselineLifts);
 
-    const systemPrompt = `You are ChronoPilot's weekly planner. Plan a 7-day schedule starting on ${weekStartIso} (Europe/Bratislava).
+    const systemPrompt = `You are ChronoPilot's weekly meal and training planner. Generate ONLY gym sessions and meals for the week starting ${weekStartIso} (Europe/Bratislava).
 
 GOAL
-- Produce a realistic weekly plan with time-blocks for work, training, meals, sleep, and rituals.
-- For each GYM block, include a detailed DESCRIPTION: exercises, sets x reps, target weights, rest times, and progression notes.
-- For each MEAL block (lunch & dinner), include a DESCRIPTION of the actual meal (rotation rules).
+- Generate ONLY 6 GYM sessions (Mon-Sat) and 14 MEALS (lunch + dinner for 7 days)
+- Each GYM block must have detailed exercise prescriptions with sets, reps, and target weights
+- Each MEAL block must specify what to cook/prepare
+- Daily planning will handle work schedule, sleep, rituals, and other activities
 
 TIME & FORMAT
 - Timezone: Europe/Bratislava. Use ISO 8601 with explicit offset (+01:00 winter / +02:00 summer). Never use "Z".
-- No overlaps; every block ≥ 5 minutes.
-- Output: a single JSON ARRAY of blocks spanning 7 days (Mon–Sun or ${weekStartIso} .. +6 days).
-- Use these keys exactly: title, start_at, end_at, type ("task"|"ritual"|"event"|"meal"|"sleep"|"buffer"|"commute"), status ("planned"), notes, description.
+- Output: JSON ARRAY with ~20 blocks (6 gym + 7 lunch + 7 dinner)
+- Keys: title, start_at, end_at, type ("ritual" for gym | "meal" for meals), status ("planned"), notes, description
 
-USER BASELINE (pull from profile)
-- Wake at ${wakeTime}, build mode ${buildModeStart}-${buildModeEnd} (morning deep work is sacred unless journaling is required).
-- Office: Mon–Thu 08:30–16:30 on-site; Fri home office.
-- Lunch fixed 12:00–12:45.
-- Pre-bed routine ${profile?.prebed_start || '21:30'}, lights out ${profile?.bedtime || '22:00'}. Sleep target 7–8 h (min 6.5).
-- Gym commute: 5 min each way.
-- Hockey: HK Spišská Nová Ves → treat as HARD-FIXED from events table (add ±10 min buffers if missing). Sunday default 16:00–18:00 if no event present, then gym 18:30–19:30.
-- Dinner rotation (simple): Bread with ham (cheese, butter, vegetables) OR Bread with eggs OR Yogurt with cereals.
-- Breakfast: none.
+GYM SESSIONS
+- 6×/week cycle: Push → Pull → Legs → Active → Push → Pull (Mon-Sat)
+- Time slots (approximate, daily planner will adjust): 17:00-18:30
+- Include 5min gym commute in the 90min window
 
-WEEK TYPE (controls rep-schemes)
+WEEK TYPE (controls rep schemes)
 - week_type = ${weekType}  // "Quantity" | "Intensity" | "Mixed"
-  • Quantity: main lifts 6×10 @ ~60–65% 1RM, rest 60–90s.
-  • Intensity: 4 sets @ 12/8/6/4 reps, ramping to ~85–90% 1RM on last set, rest 90–150s.
-  • Mixed: use Quantity for Mon–Wed; Intensity for Fri–Sat; Thu = Active.
+  • Quantity: main lifts 6×10 @ ~60-65% 1RM, rest 60-90s
+  • Intensity: 4 sets @ 12/8/6/4 reps, ramping to ~85-90% 1RM, rest 90-150s
+  • Mixed: Mon-Wed use Quantity; Thu Active; Fri-Sat use Intensity
 
-GYM SPLIT & TIMES
-- 6×/week cycle: Push → Pull → Legs → Active → Push → Pull → Legs.
-- Typical time: 17:00–18:00/18:30 (Mon–Sat). Sunday follows hockey rule.
-- Football: Thursday variable; treat as optional Active session that can replace the Active day.
-- Swimming: 17:00–18:30 on Active/Rest days (prefer over sauna).
-
-EXERCISE LIBRARY (choose 4–6 per day)
-- PUSH: Barbell Bench Press, Incline DB Press, Overhead Press, Machine Chest Press, Cable Fly or Dips, Lateral Raises, Triceps Pushdown.
-- PULL: Deadlift or RDL (alternate weekly), Pull-ups/Lat Pulldown, Barbell Row/Chest-supported Row, Face Pulls, Seated Cable Row, Biceps Curl variant.
-- LEGS: Back Squat or Front Squat (alternate weekly), Bulgarian Split Squat or Walking Lunges, Leg Press, Hamstring Curl, Leg Extension, Calf Raises, Core.
-- ACTIVE: Swim 40–60 min (or 10–12k steps brisk walk) + mobility.
+EXERCISE LIBRARY (choose 4-6 per session)
+- PUSH: Barbell Bench Press, Incline DB Press, Overhead Press, Machine Chest Press, Cable Fly, Dips, Lateral Raises, Triceps Pushdown
+- PULL: Deadlift or RDL (alternate weekly), Pull-ups/Lat Pulldown, Barbell Row, Face Pulls, Seated Cable Row, Biceps Curl
+- LEGS: Back Squat or Front Squat (alternate weekly), Bulgarian Split Squat, Leg Press, Hamstring Curl, Leg Extension, Calf Raises, Core
+- ACTIVE: Swimming 60min (17:00-18:00) + mobility work
 
 WEIGHTS & PROGRESSION
-- Read last known loads from prior blocks' notes/description if present (look for patterns like "Bench 50 kg", "Chest press 45 kg").
-- If no history present for a lift, use ${baselineLiftsJson} as baseline (per exercise name).
-- Progressive overload rule: if the same lift was successfully completed for 2 consecutive weeks, increase target by +10% this week; if failed 2×, reduce −5% and mark "technique focus".
-- Always show target loads explicitly in DESCRIPTION (kg) per set scheme.
+- Use ${baselineLiftsJson} as baseline for exercises without history
+- Check lifts_last_weights: ${JSON.stringify(lifts_last_weights)}
+- Progressive overload: +10% if last 2 weeks successful, -5% if failed with "technique focus" note
+- Show explicit target weights (kg) for every exercise
 
-MEALS (WEEK ROTATION)
-- Lunch every day 12:00–12:45 (meal type): MUST specify "base with main" (e.g., "Rice with salmon"). Avoid repeating the same main 3 days in a row.
-- Dinner every day (meal type) in an evening window (e.g., 18:30–21:00 depending on hockey/gym): choose from the simple rotation; avoid same dinner 3 nights consecutively.
-- On hockey days: dinner BEFORE or DURING the game, not after post-game gym.
+MEALS
+- LUNCH (12:00-12:45): Base + main protein (e.g., "Rice with salmon", "Potatoes with chicken", "Pasta with beef")
+  - Avoid repeating same main 3 days in a row
+  - Last 7 lunches: ${JSON.stringify(lunches_last_7)}
+- DINNER (18:45-19:15 approximate): Simple rotation
+  - Option A: Bread with ham (cheese, butter, vegetables)
+  - Option B: Bread with eggs (scrambled or fried)
+  - Option C: Yogurt with cereals and fruit
+  - Avoid same dinner 3 nights consecutively
+  - Last 7 dinners: ${JSON.stringify(dinners_last_7)}
 
-SUPPLEMENTS
-- With dinner: Omega-3, D3. Training days: Creatine 3 g (default post-workout with dinner; fallback 30 min pre-workout). 90 min before sleep: Magnesium, Ashwagandha.
-- Add these in DESCRIPTION of the relevant MEAL/PRE-BED blocks.
+SUPPLEMENTS (add to meal descriptions)
+- Lunch: None required
+- Dinner: Omega-3, Vitamin D3, Creatine 3g (on training days)
+- Note: Daily planner will schedule pre-bed supplements (Magnesium, Ashwagandha) separately
 
-HISTORY INPUTS (provided by backend)
-- workouts_last_14: ${JSON.stringify(workouts_last_14)}
-- lifts_last_weights: ${JSON.stringify(lifts_last_weights)}
-- lunches_last_7: ${JSON.stringify(lunches_last_7)}
-- dinners_last_7: ${JSON.stringify(dinners_last_7)}
-- detox_saturday_flag: ${detox_saturday_flag}
+WORKOUT HISTORY (for progression)
+- Recent workouts: ${JSON.stringify(workouts_last_14)}
 
-PLANNING RULES (WEEK)
-1) Place hard-fixed events first (Outlook meetings, hockey).
-2) For each day, keep morning build mode ${buildModeStart}-${buildModeEnd}. If journaling is required, schedule it first inside build mode.
-3) Insert lunch 12:00–12:45 (meal type, with explicit base+main).
-4) Schedule gym 17:00–18:00/18:30 according to split; insert 5-min commute before/after.
-   - Sunday: if hockey exists ≈16:00–18:00, set gym 18:30–19:30.
-5) Fill remaining with focused work blocks, buffers (5–10 min every 50–90 min), and evening wind-down (yoga + meditation).
-6) For Active day (Thu by default), schedule swimming 17:00–18:30 or football if present.
-7) Respect location (BA/SNV) if provided; do not plan breakfast.
-8) Keep 10–15% weekly buffer (unscheduled).
-9) Digital-detox Saturday (if alternating & enabled): suppress screen-heavy tasks; allow gym/swim/groceries/analog activities.
-
-BLOCK CONTENT REQUIREMENTS
-- Every GYM block must include DESCRIPTION with:
-  • Split & session goal (Quantity/Intensity/Mixed)  
-  • Exercise list (4–6), sets×reps scheme, target weight per exercise (kg), rest guidance  
-  • Progression note (e.g., "+10% vs last week" or "-5% technique focus")  
-  Example:
-  "DESCRIPTION": "PUSH — Quantity (6×10 @ ~62% 1RM)\\n1) Bench Press — 6×10 @ 50 kg, rest 90s\\n2) Incline DB Press — 6×10 @ 22.5 kg/hand\\n3) Overhead Press — 6×10 @ 32.5 kg\\n4) Lateral Raises — 5×12 @ 7.5 kg\\nCreatine 3 g post-workout; commute ±5 min."
-- Every MEAL block must include DESCRIPTION with the chosen dish:
-  • Lunch: "Rice with salmon / Potatoes with chicken / ..."
-  • Dinner: "Bread with ham (cheese, butter, veg)" OR "Bread with eggs" OR "Yogurt with cereals"
-  • Add supplement notes to dinner when relevant.
-
-OUTPUT FORMAT (single JSON array of blocks for the whole week):
-Return ONLY the JSON array, no additional text.`;
+OUTPUT FORMAT
+Return ONLY a JSON array of blocks. Example:
+[
+  {
+    "title": "Gym | PUSH — Quantity",
+    "start_at": "2025-11-03T17:00:00+01:00",
+    "end_at": "2025-11-03T18:30:00+01:00",
+    "type": "ritual",
+    "status": "planned",
+    "description": "PUSH — Quantity (6×10 @ 62% 1RM)\\n1) Bench Press — 6×10 @ 50 kg, rest 90s\\n2) Incline DB Press — 6×10 @ 22.5 kg/hand, rest 90s\\n3) Overhead Press — 6×10 @ 32.5 kg, rest 90s\\n4) Machine Chest Press — 6×10 @ 45 kg, rest 60s\\n5) Lateral Raises — 5×12 @ 7.5 kg, rest 60s\\n6) Triceps Pushdown — 4×12 @ 20 kg, rest 60s",
+    "notes": "Progressive overload: +10% from last week. Includes 5min commute each way."
+  },
+  {
+    "title": "Lunch — Rice with salmon",
+    "start_at": "2025-11-03T12:00:00+01:00",
+    "end_at": "2025-11-03T12:45:00+01:00",
+    "type": "meal",
+    "status": "planned",
+    "description": "White rice (200g cooked) with grilled salmon fillet (150g), steamed broccoli, olive oil drizzle",
+    "notes": "High protein post-morning session"
+  },
+  {
+    "title": "Dinner — Bread with ham",
+    "start_at": "2025-11-03T18:45:00+01:00",
+    "end_at": "2025-11-03T19:15:00+01:00",
+    "type": "meal",
+    "status": "planned",
+    "description": "Whole grain bread (3-4 slices) with ham, cheese slices, butter, cucumber, tomatoes",
+    "notes": "Post-workout meal. Take: Omega-3, D3, Creatine 3g"
+  }
+]`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
