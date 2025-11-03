@@ -17,6 +17,7 @@ export type Database = {
       blocks: {
         Row: {
           created_at: string | null
+          description: string | null
           end_at: string
           id: string
           meal_details: string | null
@@ -33,6 +34,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          description?: string | null
           end_at: string
           id?: string
           meal_details?: string | null
@@ -49,6 +51,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          description?: string | null
           end_at?: string
           id?: string
           meal_details?: string | null
