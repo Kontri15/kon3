@@ -9,6 +9,7 @@ import { format, addDays, isSameDay, startOfWeek } from "date-fns";
 import { getWeekBounds, formatDateRange, getWeekDays, canGoBackward, canGoForward } from "@/lib/dateUtils";
 import { useBlocksForDateRange } from "@/hooks/useBlocksForDateRange";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,6 +21,7 @@ export default function Week() {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [isPlanning, setIsPlanning] = useState(false);
+  const [weekType, setWeekType] = useState<"Quantity" | "Intensity" | "Mixed">("Mixed");
   const queryClient = useQueryClient();
 
   const { start: weekStart, end: weekEnd } = getWeekBounds(currentWeekStart);
@@ -50,14 +52,17 @@ export default function Week() {
     try {
       const { error } = await supabase.functions.invoke("plan-my-week", {
         body: {
-          weekStart: format(weekStart, "yyyy-MM-dd"),
-          weekEnd: format(weekEnd, "yyyy-MM-dd"),
+          weekStartIso: weekStart.toISOString(),
+          weekType,
+          wakeTime: "06:00",
+          buildModeStart: "06:15",
+          buildModeEnd: "08:00",
         },
       });
 
       if (error) throw error;
 
-      toast.success("Week planned successfully!");
+      toast.success(`Week planned successfully (${weekType} mode)!`);
       queryClient.invalidateQueries({ queryKey: ["blocks"] });
     } catch (error) {
       console.error("Error planning week:", error);
@@ -141,11 +146,23 @@ export default function Week() {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button onClick={handlePlanWeek} disabled={isPlanning}>
-              <Zap className="w-4 h-4 mr-2" />
-              {isPlanning ? "Planning..." : "Plan My Week"}
-            </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex gap-2">
+              <Select value={weekType} onValueChange={(value: any) => setWeekType(value)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Quantity">Quantity</SelectItem>
+                  <SelectItem value="Intensity">Intensity</SelectItem>
+                  <SelectItem value="Mixed">Mixed</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={handlePlanWeek} disabled={isPlanning}>
+                <Zap className="w-4 h-4 mr-2" />
+                {isPlanning ? "Planning..." : "Plan Week"}
+              </Button>
+            </div>
             <Button variant="outline" onClick={() => {
               setSelectedDate(undefined);
               setCreateDialogOpen(true);
