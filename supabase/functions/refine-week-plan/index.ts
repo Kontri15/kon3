@@ -66,6 +66,8 @@ OUTPUT FORMAT (JSON only):
 }`;
 
     console.log('Calling Lovable AI for week plan refinement...');
+    console.log('Current blocks count:', currentBlocks.length);
+    console.log('Feedback:', feedback);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -86,14 +88,34 @@ OUTPUT FORMAT (JSON only):
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Lovable AI error:', response.status, errorText);
-      throw new Error(`Lovable AI request failed: ${response.status}`);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'Payment required. Please add credits to your workspace.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      throw new Error(`Lovable AI request failed: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('Received AI response');
+    
     const content = data.choices[0].message.content;
     const parsed = JSON.parse(content);
-
-    console.log('Successfully refined week plan');
+    
+    console.log('Successfully refined week plan, returning:', {
+      modifiedBlocksCount: parsed.modifiedBlocks?.length,
+      hasExplanation: !!parsed.explanation
+    });
 
     return new Response(
       JSON.stringify(parsed),
