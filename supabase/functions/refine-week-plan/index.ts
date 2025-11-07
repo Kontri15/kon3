@@ -74,7 +74,7 @@ OUTPUT FORMAT (JSON only):
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: feedback }
@@ -103,7 +103,7 @@ OUTPUT FORMAT (JSON only):
   } catch (error) {
     console.error('Error in refine-week-plan:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
