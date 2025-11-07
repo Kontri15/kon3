@@ -18,9 +18,10 @@ interface Message {
 interface Props {
   currentBlocks: any[];
   onApplyChanges: (newBlocks: any[]) => void;
+  edgeFunction?: string;
 }
 
-export const PlanFeedbackChat = ({ currentBlocks, onApplyChanges }: Props) => {
+export const PlanFeedbackChat = ({ currentBlocks, onApplyChanges, edgeFunction = 'refine-plan' }: Props) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -48,7 +49,7 @@ export const PlanFeedbackChat = ({ currentBlocks, onApplyChanges }: Props) => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('refine-plan', {
+      const { data, error } = await supabase.functions.invoke(edgeFunction, {
         body: {
           feedback: input,
           currentBlocks,

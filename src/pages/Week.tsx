@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BlockCreateDialog } from "@/components/BlockCreateDialog";
 import { BlockDetailDialog } from "@/components/BlockDetailDialog";
-import { ChevronLeft, ChevronRight, CalendarDays, Plus, Zap } from "lucide-react";
+import { PlanFeedbackChat } from "@/components/PlanFeedbackChat";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import { ChevronLeft, ChevronRight, Plus, Zap, MessageSquare } from "lucide-react";
 import { format, addDays, isSameDay, startOfWeek } from "date-fns";
 import { getWeekBounds, formatDateRange, getWeekDays, canGoBackward, canGoForward } from "@/lib/dateUtils";
 import { useBlocksForDateRange } from "@/hooks/useBlocksForDateRange";
@@ -22,6 +24,7 @@ export default function Week() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [isPlanning, setIsPlanning] = useState(false);
   const [weekType, setWeekType] = useState<"Quantity" | "Intensity" | "Mixed">("Mixed");
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { start: weekStart, end: weekEnd } = getWeekBounds(currentWeekStart);
@@ -111,6 +114,31 @@ export default function Week() {
     }
   };
 
+  const handleApplyChanges = async (newBlocks: any[]) => {
+    try {
+      const startStr = format(weekStart, "yyyy-MM-dd");
+      const endStr = format(weekEnd, "yyyy-MM-dd");
+      
+      await supabase
+        .from('blocks')
+        .delete()
+        .gte('start_at', `${startStr}T00:00:00`)
+        .lte('start_at', `${endStr}T23:59:59`);
+
+      const { error } = await supabase
+        .from('blocks')
+        .insert(newBlocks);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+      toast.success("Week plan updated");
+    } catch (error) {
+      console.error('Error applying changes:', error);
+      toast.error("Failed to update week plan");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -173,6 +201,14 @@ export default function Week() {
             }}>
               <Plus className="w-4 h-4 mr-2" />
               Add Block
+            </Button>
+            <Button 
+              onClick={() => setIsChatOpen(!isChatOpen)}
+              variant="outline"
+              className="gap-2"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Assistant
             </Button>
           </div>
         </div>
@@ -246,6 +282,16 @@ export default function Week() {
             })}
           </div>
         )}
+
+        <Collapsible open={isChatOpen} onOpenChange={setIsChatOpen} className="mt-6">
+          <CollapsibleContent>
+            <PlanFeedbackChat 
+              currentBlocks={blocks}
+              onApplyChanges={handleApplyChanges}
+              edgeFunction="refine-week-plan"
+            />
+          </CollapsibleContent>
+        </Collapsible>
 
         <BlockCreateDialog
           open={createDialogOpen}

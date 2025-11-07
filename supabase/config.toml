@@ -18,6 +18,9 @@ verify_jwt = false
 [functions.refine-plan]
 verify_jwt = false
 
+[functions.refine-week-plan]
+verify_jwt = false
+
 [functions.whoop-oauth-callback]
 verify_jwt = false
 
