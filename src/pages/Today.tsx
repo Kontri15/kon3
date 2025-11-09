@@ -7,29 +7,32 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Sparkles, MessageSquare, ChevronDown, Plus } from "lucide-react";
+import { Sparkles, MessageSquare, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 
 const Today = () => {
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow;
+  });
   const [isPlanning, setIsPlanning] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch tomorrow's blocks for chat feedback
+  // Fetch blocks for selected date for chat feedback
   const { data: currentBlocks = [] } = useQuery({
-    queryKey: ['blocks', 'tomorrow'],
+    queryKey: ['blocks', format(selectedDate, 'yyyy-MM-dd')],
     queryFn: async () => {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      const dateStr = selectedDate.toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('blocks')
         .select('*')
-        .gte('start_at', `${tomorrowStr}T00:00:00`)
-        .lt('start_at', `${tomorrowStr}T23:59:59`)
+        .gte('start_at', `${dateStr}T00:00:00`)
+        .lt('start_at', `${dateStr}T23:59:59`)
         .order('start_at');
       
       if (error) throw error;
@@ -41,18 +44,16 @@ const Today = () => {
     setIsPlanning(true);
     try {
       const { data, error } = await supabase.functions.invoke('plan-my-day', {
-        body: {}
+        body: { targetDate: selectedDate.toISOString() }
       });
       
       if (error) throw error;
       
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = format(tomorrow, 'EEEE, MMM d');
+      const dateStr = format(selectedDate, 'EEEE, MMM d');
       
       toast({
-        title: "Tomorrow planned!",
-        description: `Created ${data.blocksCreated} time blocks for ${tomorrowStr}.`,
+        title: "Day planned!",
+        description: `Created ${data.blocksCreated} time blocks for ${dateStr}.`,
       });
       
       // Refresh blocks
@@ -71,15 +72,13 @@ const Today = () => {
 
   const handleApplyChanges = async (newBlocks: any[]) => {
     try {
-      // Delete existing blocks for tomorrow
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      // Delete existing blocks for selected date
+      const dateStr = selectedDate.toISOString().split('T')[0];
       await supabase
         .from('blocks')
         .delete()
-        .gte('start_at', `${tomorrowStr}T00:00:00`)
-        .lt('start_at', `${tomorrowStr}T23:59:59`);
+        .gte('start_at', `${dateStr}T00:00:00`)
+        .lt('start_at', `${dateStr}T23:59:59`);
 
       // Insert new blocks
       const { error } = await supabase
@@ -103,6 +102,15 @@ const Today = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const isToday = format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+  const isTomorrow = format(selectedDate, 'yyyy-MM-dd') === format(addDays(new Date(), 1), 'yyyy-MM-dd');
+  
+  const getDateLabel = () => {
+    if (isToday) return "Today";
+    if (isTomorrow) return "Tomorrow";
+    return format(selectedDate, 'EEEE, MMM d');
   };
 
   return (
@@ -136,12 +144,33 @@ const Today = () => {
               className="gap-2"
             >
               <Sparkles className="w-4 h-4" />
-              {isPlanning ? "Planning..." : "Plan Tomorrow"}
+              {isPlanning ? "Planning..." : `Plan ${getDateLabel()}`}
             </Button>
           </div>
         </div>
         
-        <TimelineView />
+        {/* Date Navigation */}
+        <div className="flex items-center justify-center gap-4 mb-6">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSelectedDate(prev => addDays(prev, -1))}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <h2 className="text-2xl font-bold text-foreground min-w-[240px] text-center">
+            {getDateLabel()}
+          </h2>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSelectedDate(prev => addDays(prev, 1))}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+        
+        <TimelineView date={selectedDate} />
         
         <Collapsible open={isChatOpen} onOpenChange={setIsChatOpen} className="mt-6">
           <CollapsibleContent>

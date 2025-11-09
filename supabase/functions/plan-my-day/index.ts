@@ -90,11 +90,23 @@ Deno.serve(async (req) => {
     const userId = '00000000-0000-0000-0000-000000000001';
     console.log('Planning day (single-user mode)');
 
-    // Build AI prompt
+    // Build AI prompt - accept target date from request or default to tomorrow
+    const body = await req.json().catch(() => ({}));
+    const targetDateStr = body.targetDate;
+    
     const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1); // Plan for tomorrow
-    const planningDate = tomorrow; // Use tomorrow as the planning target
+    let planningDate: Date;
+    
+    if (targetDateStr) {
+      planningDate = new Date(targetDateStr);
+      console.log('🗓️ Planning for specified date:', planningDate.toISOString());
+    } else {
+      // Default to tomorrow if no date specified
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      planningDate = tomorrow;
+      console.log('🗓️ No date specified, defaulting to tomorrow:', planningDate.toISOString());
+    }
 
     // Calculate date range for history (last 7 days from today)
     const sevenDaysAgo = new Date(today);
