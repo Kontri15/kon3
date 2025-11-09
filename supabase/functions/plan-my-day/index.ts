@@ -92,8 +92,11 @@ Deno.serve(async (req) => {
 
     // Build AI prompt
     const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1); // Plan for tomorrow
+    const planningDate = tomorrow; // Use tomorrow as the planning target
 
-    // Calculate date range for history (last 7 days)
+    // Calculate date range for history (last 7 days from today)
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
@@ -142,9 +145,9 @@ Deno.serve(async (req) => {
       console.log('No tasks/rituals/events found - will generate template schedule');
     }
 
-    const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][today.getDay()];
-    const isWorkday = today.getDay() >= 1 && today.getDay() <= 5;
-    const isFriday = today.getDay() === 5;
+    const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][planningDate.getDay()];
+    const isWorkday = planningDate.getDay() >= 1 && planningDate.getDay() <= 5;
+    const isFriday = planningDate.getDay() === 5;
 
     // Calculate wake time from bedtime and sleep target
     const bedtimeHours = parseInt(profile.bedtime?.split(':')[0] || '22');
@@ -171,7 +174,7 @@ Deno.serve(async (req) => {
     const recentLunchMeals = history.slice(0, 3).map(h => h.lunch_meal).filter(Boolean);
     const recentDinnerMeals = history.slice(0, 3).map(h => h.dinner_meal).filter(Boolean);
 
-    const systemPrompt = `You are ChronoPilot's scheduling engine. Plan a personalized day for ${today.toISOString().split('T')[0]} (${dayOfWeek}) in Europe/Bratislava timezone.
+    const systemPrompt = `You are ChronoPilot's scheduling engine. Plan a personalized day for TOMORROW ${planningDate.toISOString().split('T')[0]} (${dayOfWeek}) in Europe/Bratislava timezone.
 
 REAL DAY EXAMPLE (for reference - match this level of granularity):
 06:00 Wake
@@ -510,7 +513,7 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
       // If sleep duration is wrong, fix it using profile settings
       if (sleepDurationHours < 6 || sleepDurationHours > 10) {
         console.warn(`Fixing sleep block duration: "${sleepBlock.title}" (was ${sleepDurationHours.toFixed(1)}h)`);
-        const sleepStartDate = new Date(today);
+        const sleepStartDate = new Date(planningDate);
         sleepStartDate.setHours(bedtimeHours, bedtimeMinutes, 0, 0);
         
         const sleepEndDate = new Date(sleepStartDate);
@@ -525,7 +528,7 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
     // Add sleep block if missing
     if (!sleepBlock) {
       console.warn('No sleep block found - adding default sleep block');
-      const sleepStartDate = new Date(today);
+      const sleepStartDate = new Date(planningDate);
       sleepStartDate.setHours(bedtimeHours, bedtimeMinutes, 0, 0);
       const sleepEndDate = new Date(sleepStartDate);
       sleepEndDate.setDate(sleepEndDate.getDate() + 1);
@@ -588,15 +591,15 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
     
     console.log(`Task matching complete: ${matchedCount}/${taskBlocks.length} blocks matched`);
 
-    // Delete existing planned blocks for today
-    const todayStart = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-    const todayEnd = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+    // Delete existing planned blocks for tomorrow
+    const tomorrowStart = new Date(planningDate.setHours(0, 0, 0, 0)).toISOString();
+    const tomorrowEnd = new Date(planningDate.setHours(23, 59, 59, 999)).toISOString();
     await supabase.from('blocks')
       .delete()
       .eq('user_id', userId)
       .eq('status', 'planned')
-      .gte('start_at', todayStart)
-      .lte('start_at', todayEnd);
+      .gte('start_at', tomorrowStart)
+      .lte('start_at', tomorrowEnd);
 
     // Insert new blocks
     const blocksToInsert = blocks.map((block: any) => ({

@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Sparkles, MessageSquare, ChevronDown, Plus } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 
 const Today = () => {
   const [isPlanning, setIsPlanning] = useState(false);
@@ -17,16 +18,18 @@ const Today = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch current blocks for chat feedback
+  // Fetch tomorrow's blocks for chat feedback
   const { data: currentBlocks = [] } = useQuery({
-    queryKey: ['blocks'],
+    queryKey: ['blocks', 'tomorrow'],
     queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('blocks')
         .select('*')
-        .gte('start_at', `${today}T00:00:00`)
-        .lt('start_at', `${today}T23:59:59`)
+        .gte('start_at', `${tomorrowStr}T00:00:00`)
+        .lt('start_at', `${tomorrowStr}T23:59:59`)
         .order('start_at');
       
       if (error) throw error;
@@ -43,9 +46,13 @@ const Today = () => {
       
       if (error) throw error;
       
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = format(tomorrow, 'EEEE, MMM d');
+      
       toast({
-        title: "Day planned!",
-        description: `Created ${data.blocksCreated} time blocks for today.`,
+        title: "Tomorrow planned!",
+        description: `Created ${data.blocksCreated} time blocks for ${tomorrowStr}.`,
       });
       
       // Refresh blocks
@@ -64,13 +71,15 @@ const Today = () => {
 
   const handleApplyChanges = async (newBlocks: any[]) => {
     try {
-      // Delete existing blocks for today
-      const today = new Date().toISOString().split('T')[0];
+      // Delete existing blocks for tomorrow
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
       await supabase
         .from('blocks')
         .delete()
-        .gte('start_at', `${today}T00:00:00`)
-        .lt('start_at', `${today}T23:59:59`);
+        .gte('start_at', `${tomorrowStr}T00:00:00`)
+        .lt('start_at', `${tomorrowStr}T23:59:59`);
 
       // Insert new blocks
       const { error } = await supabase
@@ -127,7 +136,7 @@ const Today = () => {
               className="gap-2"
             >
               <Sparkles className="w-4 h-4" />
-              {isPlanning ? "Planning..." : "Plan My Day"}
+              {isPlanning ? "Planning..." : "Plan Tomorrow"}
             </Button>
           </div>
         </div>
