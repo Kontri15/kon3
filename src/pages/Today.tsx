@@ -3,6 +3,8 @@ import { TimelineView } from "@/components/TimelineView";
 import { PlanFeedbackChat } from "@/components/PlanFeedbackChat";
 import { BlockCreateDialog } from "@/components/BlockCreateDialog";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +22,7 @@ const Today = () => {
   const [isPlanning, setIsPlanning] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [planningNotes, setPlanningNotes] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -44,7 +47,10 @@ const Today = () => {
     setIsPlanning(true);
     try {
       const { data, error } = await supabase.functions.invoke('plan-my-day', {
-        body: { targetDate: selectedDate.toISOString() }
+        body: { 
+          targetDate: selectedDate.toISOString(),
+          userNotes: planningNotes 
+        }
       });
       
       if (error) throw error;
@@ -168,6 +174,23 @@ const Today = () => {
           >
             <ChevronRight className="w-4 h-4" />
           </Button>
+        </div>
+
+        {/* Planning Notes */}
+        <div className="mb-6 space-y-2">
+          <Label htmlFor="planning-notes" className="text-sm font-medium">
+            Planning Notes (optional)
+          </Label>
+          <Textarea
+            id="planning-notes"
+            placeholder="e.g., Had push day yesterday, ate bread with ham for dinner, need to focus on urgent MagicStyle tasks..."
+            value={planningNotes}
+            onChange={(e) => setPlanningNotes(e.target.value)}
+            className="min-h-[80px] resize-none"
+          />
+          <p className="text-xs text-muted-foreground">
+            Provide context to help the AI plan your day better (recent workouts, meals, priorities, etc.)
+          </p>
         </div>
         
         <TimelineView date={selectedDate} />

@@ -93,6 +93,7 @@ Deno.serve(async (req) => {
     // Build AI prompt - accept target date from request or default to tomorrow
     const body = await req.json().catch(() => ({}));
     const targetDateStr = body.targetDate;
+    const userNotes = body.userNotes || '';
     
     const today = new Date();
     let planningDate: Date;
@@ -188,7 +189,12 @@ Deno.serve(async (req) => {
 
     const systemPrompt = `You are ChronoPilot's scheduling engine. Plan a personalized day for TOMORROW ${planningDate.toISOString().split('T')[0]} (${dayOfWeek}) in Europe/Bratislava timezone.
 
-REAL DAY EXAMPLE (for reference - match this level of granularity):
+${userNotes ? `USER NOTES FOR PLANNING:
+${userNotes}
+
+IMPORTANT: Consider these user notes when planning the day. Adjust gym cycle, meal rotation, and task priorities accordingly.
+
+` : ''}REAL DAY EXAMPLE (for reference - match this level of granularity):
 06:00 Wake
 06:00–06:02 30 push-ups (2 min) - Fixed
 06:02–06:04 Brush my teeth - Fixed

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { BlockCreateDialog } from "@/components/BlockCreateDialog";
 import { BlockDetailDialog } from "@/components/BlockDetailDialog";
 import { PlanFeedbackChat } from "@/components/PlanFeedbackChat";
@@ -25,6 +27,7 @@ export default function Week() {
   const [isPlanning, setIsPlanning] = useState(false);
   const [weekType, setWeekType] = useState<"Quantity" | "Intensity" | "Mixed">("Mixed");
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [weekPlanningNotes, setWeekPlanningNotes] = useState("");
   const queryClient = useQueryClient();
 
   const { start: weekStart, end: weekEnd } = getWeekBounds(currentWeekStart);
@@ -60,6 +63,7 @@ export default function Week() {
           wakeTime: "06:00",
           buildModeStart: "06:15",
           buildModeEnd: "08:00",
+          userNotes: weekPlanningNotes,
         },
       });
 
@@ -176,6 +180,23 @@ export default function Week() {
 
           <div className="mb-3 p-3 bg-muted rounded-lg text-sm text-muted-foreground">
             <p><strong>Weekly Planning:</strong> Generates gym sessions and meals only. Use "Plan My Day" on the Today page to schedule work, sleep, and other activities.</p>
+          </div>
+
+          {/* Planning Notes */}
+          <div className="mb-4 space-y-2">
+            <Label htmlFor="week-planning-notes" className="text-sm font-medium">
+              Planning Notes (optional)
+            </Label>
+            <Textarea
+              id="week-planning-notes"
+              placeholder="e.g., Had pull day on Monday, prefer swimming this week, focus on recovery..."
+              value={weekPlanningNotes}
+              onChange={(e) => setWeekPlanningNotes(e.target.value)}
+              className="min-h-[80px] resize-none"
+            />
+            <p className="text-xs text-muted-foreground">
+              Provide context to help the AI plan your week better (recent workouts, training preferences, recovery needs, etc.)
+            </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2">

@@ -134,7 +134,8 @@ serve(async (req) => {
       weekType = "Mixed",
       wakeTime = "06:00",
       buildModeStart = "06:15",
-      buildModeEnd = "08:00"
+      buildModeEnd = "08:00",
+      userNotes = ""
     } = await req.json();
     
     console.log("Planning week:", weekStartIso, "Type:", weekType);
@@ -200,7 +201,12 @@ serve(async (req) => {
 
     const systemPrompt = `You are ChronoPilot's weekly meal and training planner. Generate ONLY gym sessions and meals for the week starting ${weekStartIso} (Europe/Bratislava).
 
-GOAL
+${userNotes ? `USER NOTES FOR PLANNING:
+${userNotes}
+
+IMPORTANT: Consider these user notes when planning the week. Adjust gym cycle position, meal rotation, and training focus accordingly.
+
+` : ''}GOAL
 - Generate ONLY 6 GYM sessions (Mon-Sat) and 14 MEALS (lunch + dinner for 7 days)
 - Each GYM block must have detailed exercise prescriptions with sets, reps, and target weights
 - Each MEAL block must specify what to cook/prepare
