@@ -628,6 +628,9 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
     const blocksToInsert = blocks.map((block: any) => ({
       ...block,
       user_id: userId,
+      // Ensure IDs are valid UUIDs or null (AI sometimes returns string identifiers)
+      task_id: block.task_id && block.task_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) ? block.task_id : null,
+      ritual_id: block.ritual_id && block.ritual_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) ? block.ritual_id : null,
     }));
 
     console.log('Inserting blocks (first 3):');
