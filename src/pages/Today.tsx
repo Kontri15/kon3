@@ -9,7 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Sparkles, MessageSquare, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Sparkles, MessageSquare, Plus, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { format, addDays } from "date-fns";
 
@@ -76,6 +76,34 @@ const Today = () => {
     }
   };
 
+  const handleClearDay = async () => {
+    try {
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      const { error } = await supabase
+        .from('blocks')
+        .delete()
+        .gte('start_at', `${dateStr}T00:00:00`)
+        .lt('start_at', `${dateStr}T23:59:59`);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['blocks'] });
+      
+      const dateName = getDateLabel();
+      toast({
+        title: "Day cleared",
+        description: `All blocks for ${dateName} have been removed`,
+      });
+    } catch (error) {
+      console.error('Error clearing day:', error);
+      toast({
+        title: "Clear failed",
+        description: error instanceof Error ? error.message : "Failed to clear day",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleApplyChanges = async (newBlocks: any[]) => {
     try {
       // Delete existing blocks for selected date
@@ -133,6 +161,15 @@ const Today = () => {
             >
               <Plus className="w-4 h-4" />
               Add Block
+            </Button>
+            <Button 
+              onClick={handleClearDay}
+              variant="outline"
+              size="lg"
+              className="gap-2 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear Day
             </Button>
             <Button 
               onClick={() => setIsChatOpen(!isChatOpen)}

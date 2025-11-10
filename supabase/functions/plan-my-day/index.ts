@@ -189,10 +189,21 @@ Deno.serve(async (req) => {
 
     const systemPrompt = `You are ChronoPilot's scheduling engine. Plan a personalized day for TOMORROW ${planningDate.toISOString().split('T')[0]} (${dayOfWeek}) in Europe/Bratislava timezone.
 
-${userNotes ? `USER NOTES FOR PLANNING:
+${userNotes ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 CRITICAL USER CONTEXT - MUST BE PRIORITIZED IN PLANNING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 ${userNotes}
 
-IMPORTANT: Consider these user notes when planning the day. Adjust gym cycle, meal rotation, and task priorities accordingly.
+⚠️ MANDATORY: These user notes are CRITICAL CONTEXT and must directly influence:
+1. Gym cycle planning (adjust based on yesterday's workout)
+2. Meal rotation (avoid recently eaten meals)
+3. Task priorities (respect mentioned deadlines and urgency)
+4. Energy levels (if user mentions being tired, schedule lighter tasks)
+5. Time constraints (if user mentions current time, adjust schedule accordingly)
+
+DO NOT ignore these notes - they represent the user's current state and needs!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ` : ''}REAL DAY EXAMPLE (for reference - match this level of granularity):
 06:00 Wake
