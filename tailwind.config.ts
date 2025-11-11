@@ -77,6 +77,10 @@ export default {
           sleep: "hsl(var(--block-sleep))",
           buffer: "hsl(var(--block-buffer))",
         },
+        task: {
+          personal: "hsl(var(--task-personal))",
+          business: "hsl(var(--task-business))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

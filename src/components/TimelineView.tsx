@@ -21,6 +21,9 @@ interface TimeBlock {
   task_id?: string;
   ritual_id?: string;
   notes?: string;
+  task?: {
+    biz_or_personal?: string;
+  };
 }
 
 interface RoutineContainer {
@@ -192,7 +195,7 @@ export const TimelineView = ({ date }: TimelineViewProps = {}) => {
         .from('blocks')
         .select(`
           *,
-          task:tasks(id, title, est_min, status)
+          task:tasks(id, title, est_min, status, biz_or_personal)
         `)
         .gte('start_at', queryStartTime)
         .lt('start_at', queryEndTime)
@@ -230,12 +233,21 @@ export const TimelineView = ({ date }: TimelineViewProps = {}) => {
     return now >= start && now <= end;
   });
   
-  const getBlockColor = (type: TimeBlock["type"]) => {
+  const getBlockColor = (type: TimeBlock["type"], block?: TimeBlock) => {
+    // For task blocks, use different colors based on biz_or_personal
+    if (type === "task" && block?.task?.biz_or_personal) {
+      const bizType = block.task.biz_or_personal;
+      if (bizType === "biz") {
+        return "bg-task-business/20 border-l-task-business";
+      }
+      return "bg-task-personal/20 border-l-task-personal";
+    }
+    
     const colors = {
-      task: "bg-block-task border-l-blue-500",
-      ritual: "bg-block-ritual border-l-purple-500",
-      event: "bg-block-event border-l-green-500",
-      meal: "bg-block-meal border-l-orange-500",
+      task: "bg-block-task/20 border-l-block-task",
+      ritual: "bg-block-ritual/20 border-l-block-ritual",
+      event: "bg-block-event/20 border-l-block-event",
+      meal: "bg-block-meal/20 border-l-block-meal",
       break: "bg-card/50 border-l-gray-400",
       buffer: "bg-yellow-500/10 border-l-yellow-500",
       commute: "bg-cyan-500/10 border-l-cyan-500",
@@ -491,7 +503,7 @@ export const TimelineView = ({ date }: TimelineViewProps = {}) => {
                   <Card
                     key={block.id}
                     onClick={() => handleBlockClick(block)}
-                    className={`border-l-4 ${getBlockColor(block.type)} hover:bg-card/70 transition-all cursor-pointer`}
+                    className={`border-l-4 ${getBlockColor(block.type, block)} hover:bg-card/70 transition-all cursor-pointer`}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-4">

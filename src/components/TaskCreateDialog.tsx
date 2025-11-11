@@ -44,6 +44,7 @@ export function TaskCreateDialog({ open, onOpenChange }: TaskCreateDialogProps) 
   const [customTag, setCustomTag] = useState("");
   const [dueDate, setDueDate] = useState<Date>();
   const [project, setProject] = useState("");
+  const [bizType, setBizType] = useState("personal");
   const [isCreating, setIsCreating] = useState(false);
   
   const { toast } = useToast();
@@ -92,7 +93,7 @@ export function TaskCreateDialog({ open, onOpenChange }: TaskCreateDialogProps) 
         due_at: dueDate?.toISOString() || null,
         location: 'ANY',
         status: 'todo',
-        biz_or_personal: project.toLowerCase().includes('ps digital') ? 'biz' : 'personal'
+        biz_or_personal: bizType as "biz" | "personal"
       }]);
 
       if (error) throw error;
@@ -112,6 +113,7 @@ export function TaskCreateDialog({ open, onOpenChange }: TaskCreateDialogProps) 
       setSelectedTags([]);
       setDueDate(undefined);
       setProject("");
+      setBizType("personal");
       
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       onOpenChange(false);
@@ -156,6 +158,20 @@ export function TaskCreateDialog({ open, onOpenChange }: TaskCreateDialogProps) 
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
             />
+          </div>
+
+          {/* Task Type */}
+          <div className="space-y-2">
+            <Label htmlFor="bizType">Typ úlohy</Label>
+            <Select value={bizType} onValueChange={setBizType}>
+              <SelectTrigger id="bizType">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-background border-border z-50">
+                <SelectItem value="personal">Personal</SelectItem>
+                <SelectItem value="biz">PS:Digital</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Priority & Impact */}

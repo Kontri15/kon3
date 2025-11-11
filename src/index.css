@@ -61,6 +61,10 @@ All colors MUST be HSL.
     --block-sleep: 217 50% 30%;
     --block-buffer: 218 20% 25%;
     
+    /* Task category colors */
+    --task-personal: 217 91% 60%;
+    --task-business: 271 81% 56%;
+    
     --sidebar-background: 218 30% 6%;
     --sidebar-foreground: 210 40% 95%;
     --sidebar-primary: 217 91% 60%;

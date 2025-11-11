@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Target, Zap, CheckCircle2, Circle, Pencil, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +30,7 @@ interface Task {
   actual_min?: number;
   status?: string;
   tags?: string[];
+  biz_or_personal?: string;
 }
 
 interface TaskDetailDialogProps {
@@ -51,6 +53,7 @@ export const TaskDetailDialog = ({ task, open, onOpenChange }: TaskDetailDialogP
   const [editEstMin, setEditEstMin] = useState("");
   const [editDueAt, setEditDueAt] = useState("");
   const [editTags, setEditTags] = useState<string[]>([]);
+  const [editBizType, setEditBizType] = useState("personal");
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -66,6 +69,7 @@ export const TaskDetailDialog = ({ task, open, onOpenChange }: TaskDetailDialogP
       setEditEstMin(task.est_min?.toString() || "");
       setEditDueAt(task.due_at ? new Date(task.due_at).toISOString().split('T')[0] : "");
       setEditTags(task.tags || []);
+      setEditBizType(task.biz_or_personal || "personal");
     }
   }, [task]);
 
@@ -140,6 +144,7 @@ export const TaskDetailDialog = ({ task, open, onOpenChange }: TaskDetailDialogP
           est_min: editEstMin ? parseInt(editEstMin) : null,
           due_at: editDueAt ? new Date(editDueAt).toISOString() : null,
           tags: editTags.length > 0 ? editTags : null,
+          biz_or_personal: editBizType as "biz" | "personal",
         })
         .eq('id', task.id);
 
@@ -275,7 +280,19 @@ export const TaskDetailDialog = ({ task, open, onOpenChange }: TaskDetailDialogP
           {/* Editable Fields or Meta Information */}
           {isEditing ? (
             <div className="space-y-4 p-4 rounded-lg bg-surface/50 border border-border">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label>Typ úlohy</Label>
+                  <Select value={editBizType} onValueChange={setEditBizType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border-border z-50">
+                      <SelectItem value="personal">Personal</SelectItem>
+                      <SelectItem value="biz">PS:Digital</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div>
                   <Label>Project</Label>
                   <Input
