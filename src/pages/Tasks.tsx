@@ -24,6 +24,7 @@ interface Task {
   status?: string;
   tags?: string[];
   updated_at?: string;
+  biz_or_personal?: string;
 }
 
 const Tasks = () => {
@@ -71,6 +72,13 @@ const Tasks = () => {
     if (priority >= 4) return "bg-destructive/20 text-destructive border-destructive/30";
     if (priority >= 3) return "bg-warning/20 text-warning border-warning/30";
     return "bg-info/20 text-info border-info/30";
+  };
+
+  const getTaskTypeColor = (bizType?: string) => {
+    if (bizType === "biz") {
+      return "border-l-4 border-l-task-business bg-task-business/10";
+    }
+    return "border-l-4 border-l-task-personal bg-task-personal/10";
   };
 
   const handleTaskClick = (task: Task) => {
@@ -182,7 +190,7 @@ const Tasks = () => {
               {tasks.map((task) => (
               <Card 
                 key={task.id} 
-                className="glass border-border p-5 hover:border-primary/30 transition-all cursor-pointer"
+                className={`glass border-border p-5 hover:border-primary/30 transition-all cursor-pointer ${getTaskTypeColor(task.biz_or_personal)}`}
                 onClick={() => handleTaskClick(task)}
               >
                 <div className="space-y-3">
@@ -239,7 +247,7 @@ const Tasks = () => {
                 {completedTasks.map((task) => (
                   <Card 
                     key={task.id} 
-                    className="glass border-border/50 p-5 hover:border-success/30 transition-all cursor-pointer opacity-75"
+                    className={`glass border-border/50 p-5 hover:border-success/30 transition-all cursor-pointer opacity-75 ${getTaskTypeColor(task.biz_or_personal)}`}
                     onClick={() => handleTaskClick(task)}
                   >
                     <div className="space-y-3">
