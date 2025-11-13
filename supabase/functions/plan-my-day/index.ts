@@ -294,7 +294,8 @@ USER PROFILE & DAILY ROUTINE (ALL TIMES IN Europe/Bratislava timezone):
 
 WORK SCHEDULE:
 - Mon-Thu: On-site in office (arrive 08:30, leave 16:30)
-- Fri: Home office
+- Fri: Home office (08:30-16:00)
+  * FRIDAY RECURRING: PS:News meeting 08:30-09:00 (HARD-FIXED)
 - Current priority: work on ChronoPilot app during morning build mode
 - Meetings: few; sync from Outlook calendar
 
@@ -312,6 +313,7 @@ TRAINING & EXERCISE (6x per week):
 SPORTS SCHEDULE (HARD-FIXED):
 - Hockey team: HK Spišská Nová Ves
 - Sunday games: Typically 16:00-18:00 (4 PM to 6 PM) - schedule automatically on Sundays unless event table has different time
+- Friday games: Regular hockey sessions (check events table for exact times, schedule if present)
 - Games: Use EXACT times from events table if available (e.g., 15:50-19:10), otherwise use default Sunday 16:00-18:00
 - CRITICAL: Display hockey blocks using the EXACT start_at and end_at times from events - do NOT round to nearest hour
 - Add ±10min pre/post buffers for hockey games if not already included
@@ -349,10 +351,12 @@ SCHEDULING RULES (CRITICAL - USE EXACT TIMES):
 3. Build mode ${buildModeStart}-${buildModeEnd} EXACTLY: prioritize urgent PS Digital tasks > ChronoPilot > personal projects
    - If tasks require journaling, schedule it during build mode, shift deep work after
 4. WORK HOURS ALLOCATION (${isWorkday ? '08:30-16:00' : 'N/A - weekend'}):
-   - Work hours (Mon-Thu 08:30-16:00): ONLY schedule PS:Digital work tasks (MagicStyle, MediaToolKit)
-   - Personal projects (TatryStay, A+ Memory, Chronopilot/AI Planning, Archnes): schedule ONLY on weekends or before/after work hours
+   - Work hours (Mon-Fri 08:30-16:00): ONLY schedule PS:Digital work tasks (MagicStyle, MediaToolKit, etc.)
+   - CRITICAL: During 08:30-16:00 schedule ONLY tasks with biz_or_personal="biz" (PS:Digital work)
+   - Personal projects (TatryStay, A+ Memory, Chronopilot/AI Planning, Archnes): schedule ONLY on weekends or before/after work hours (before 08:30 or after 16:00)
    - Exception: PS:Digital tasks can spill outside work hours ONLY if they have highest priority AND tight deadline
    - Personal projects NEVER go into work hours, even if high priority
+   - Friday: PS:News meeting 08:30-09:00 is HARD-FIXED, then regular PS:Digital work until 16:00
 5. Score tasks: (impact * 3) + (priority * 2) + (urgency_score) - (energy_mismatch_penalty)
 6. Cluster by tags/projects to minimize context switching
 7. Breaks: use "buffer" type for 5-10min rest every 50-90min
