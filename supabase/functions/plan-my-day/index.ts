@@ -468,7 +468,22 @@ Generate optimal schedule as JSON array. If no tasks/rituals exist, create a pro
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error('AI Gateway error:', aiResponse.status, errorText);
-      throw new Error(`AI Gateway error: ${aiResponse.status}`);
+      
+      // Try to parse error details
+      let errorMessage = `AI Gateway error: ${aiResponse.status}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.message) {
+          errorMessage = errorData.message;
+          if (aiResponse.status === 402) {
+            errorMessage = 'Insufficient AI credits. Please check your Lovable account credits.';
+          }
+        }
+      } catch (e) {
+        // If parsing fails, use generic message
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const aiData = await aiResponse.json();
