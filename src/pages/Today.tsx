@@ -53,7 +53,11 @@ const Today = () => {
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        // Extract the actual error message from the edge function
+        const errorMessage = error.message || error.toString();
+        throw new Error(errorMessage);
+      }
       
       const dateStr = format(selectedDate, 'EEEE, MMM d');
       
@@ -66,9 +70,12 @@ const Today = () => {
       queryClient.invalidateQueries({ queryKey: ['blocks'] });
     } catch (error) {
       console.error('Error planning day:', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to plan your day";
       toast({
         title: "Planning failed",
-        description: error instanceof Error ? error.message : "Failed to plan your day",
+        description: errorMessage.includes("Insufficient AI credits") 
+          ? "Not enough AI credits available. Please check your Lovable account."
+          : errorMessage,
         variant: "destructive",
       });
     } finally {
