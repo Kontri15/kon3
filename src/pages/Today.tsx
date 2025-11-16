@@ -113,27 +113,46 @@ const Today = () => {
 
   const handleApplyChanges = async (newBlocks: any[]) => {
     try {
+      if (!newBlocks || newBlocks.length === 0) {
+        throw new Error("No blocks to apply");
+      }
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       // Delete existing blocks for selected date
       const dateStr = selectedDate.toISOString().split('T')[0];
-      await supabase
+      const { error: deleteError } = await supabase
         .from('blocks')
         .delete()
         .gte('start_at', `${dateStr}T00:00:00`)
         .lt('start_at', `${dateStr}T23:59:59`);
 
-      // Insert new blocks
-      const { error } = await supabase
-        .from('blocks')
-        .insert(newBlocks);
+      if (deleteError) throw deleteError;
 
-      if (error) throw error;
+      // Prepare blocks for insertion - ensure all required fields are present
+      const blocksToInsert = newBlocks.map(block => ({
+        ...block,
+        user_id: user.id, // Ensure user_id is set
+        id: undefined, // Let Supabase generate new IDs
+        created_at: undefined, // Let Supabase set timestamps
+        updated_at: undefined,
+      }));
+
+      // Insert new blocks
+      const { error: insertError } = await supabase
+        .from('blocks')
+        .insert(blocksToInsert);
+
+      if (insertError) throw insertError;
 
       // Refresh blocks
       queryClient.invalidateQueries({ queryKey: ['blocks'] });
       
       toast({
         title: "Schedule updated",
-        description: "Your changes have been applied",
+        description: `Applied changes to ${newBlocks.length} blocks`,
       });
     } catch (error) {
       console.error('Error applying changes:', error);
