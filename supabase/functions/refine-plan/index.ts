@@ -48,8 +48,9 @@ CRITICAL RULES:
 - Keep task priorities intact
 - If a change isn't feasible, explain why and suggest alternatives
 - Return ALL blocks (not just changed ones) in the modifiedBlocks array
-- Preserve all block properties (id, user_id, task_id, etc.)
-- Only modify start_at, end_at, and title/notes if explicitly requested
+- PRESERVE all block properties: id, user_id, task_id, ritual_id, created_at, updated_at, status
+- Only modify start_at, end_at, title, description, or notes if explicitly requested
+- CRITICAL: Every block MUST have user_id preserved from the original blocks
 
 OUTPUT FORMAT (JSON only, no markdown):
 {
