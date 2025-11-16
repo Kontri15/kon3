@@ -427,23 +427,27 @@ CRITICAL TIMING REQUIREMENTS:
 
     const userPrompt = `
 TASKS (${tasks.length}):
-${tasks.length > 0 ? tasks.map(t => `- "${t.title}" [${t.est_min || 60}min, priority=${t.priority}, impact=${t.impact}, energy=${t.energy_need}, tags=${t.tags?.join(',') || 'none'}] ${t.due_at ? `DUE: ${t.due_at}` : ''}`).join('\n') : '(No tasks - create a balanced day with deep work, breaks, meals, and personal time)'}
+${tasks.length > 0 ? tasks.map(t => `- ID: ${t.id} | "${t.title}" [${t.est_min || 60}min, priority=${t.priority}, impact=${t.impact}, energy=${t.energy_need}, tags=${t.tags?.join(',') || 'none'}] ${t.due_at ? `DUE: ${t.due_at}` : ''}`).join('\n') : '(No tasks available)'}
 
 RITUALS (${rituals.length}):
-${rituals.length > 0 ? rituals.map(r => `- "${r.name}" [${r.duration_min}min, ${r.hard_fixed ? 'HARD-FIXED' : 'flexible'}, preferred=${r.preferred_start || 'any'}, days=${r.days_of_week?.join(',') || 'all'}]`).join('\n') : '(No rituals - suggest standard morning routine, exercise, meals, and wind-down)'}
+${rituals.length > 0 ? rituals.map(r => `- ID: ${r.id} | "${r.name}" [${r.duration_min}min, ${r.hard_fixed ? 'HARD-FIXED' : 'flexible'}, preferred=${r.preferred_start || 'any'}, days=${r.days_of_week?.join(',') || 'all'}]`).join('\n') : '(No rituals)'}
 
 EVENTS (${events.length}):
 ${events.length > 0 ? events.map(e => `- "${e.title}" [${e.start_at} to ${e.end_at}, ${e.hard_fixed ? 'HARD-FIXED' : 'flexible'}]`).join('\n') : '(No events)'}
 
-Generate optimal schedule as JSON array. If no tasks/rituals exist, create a productive template day with:
-- Deep work block (${buildModeStart}-${buildModeEnd} EXACTLY)
-- Running (START 07:00 weekdays / 07:30 weekends, 30min)
-- Shower (START 07:40 weekdays / 08:00 weekends, 10min)
-- Focused work sessions with breaks
-- Lunch (12:00-12:45 EXACTLY) - MUST specify meal: "[base] with [main]" e.g. "Rice with salmon"
-- Afternoon work/projects
-- Exercise time (gym/football/swimming per schedule)
-- Dinner (simple: "Bread with ham", "Bread with eggs", or "Yogurt with cereals" + supplements on training days)
+CRITICAL TASK RULES:
+- ONLY create blocks with type="task" for tasks listed above with their exact task_id
+- NEVER invent or create fake tasks - if no tasks exist, use "buffer" blocks for unscheduled time
+- If there aren't enough tasks to fill work hours, leave time as "buffer" blocks or unscheduled
+- Task blocks MUST include the exact task_id from the list above
+
+Generate optimal schedule as JSON array with:
+- Running (START 07:00 weekdays / 07:30 weekends, 30min) - type "ritual"
+- Shower (START 07:40 weekdays / 08:00 weekends, 10min) - type "ritual"
+- ONLY tasks from the TASKS list above (with their exact task_id)
+- Lunch (12:00-12:45 EXACTLY) - MUST specify meal: "[base] with [main]" e.g. "Rice with salmon" - type "meal"
+- Exercise time (gym/football/swimming per schedule) - type "ritual"
+- Dinner (simple: "Bread with ham", "Bread with eggs", or "Yogurt with cereals") - type "meal"
 - Hockey days: dinner before/during game, NOT after
 - Evening wind-down (yoga + meditation)
 - Bedtime routine (${profile.prebed_start}-${profile.bedtime} EXACTLY)`;
