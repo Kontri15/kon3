@@ -196,8 +196,8 @@ ${userNotes ? `━━━━━━━━━━━━━━━━━━━━━�
 ${userNotes}
 
 ⚠️ MANDATORY: These user notes are CRITICAL CONTEXT and must directly influence:
-1. Gym cycle planning (adjust based on yesterday's workout)
-2. Meal rotation (avoid recently eaten meals)
+1. Gym cycle planning (adjust based on yesterday's workout and user's workout notes)
+2. Meal rotation (use ingredients mentioned by user, avoid recently eaten meals)
 3. Task priorities (respect mentioned deadlines and urgency)
 4. Energy levels (if user mentions being tired, schedule lighter tasks)
 5. Time constraints (if user mentions current time, adjust schedule accordingly)
@@ -205,7 +205,11 @@ ${userNotes}
 DO NOT ignore these notes - they represent the user's current state and needs!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-` : ''}REAL DAY EXAMPLE (for reference - match this level of granularity):
+` : ''}🔒 FIXED RECURRING MEETINGS (HARD-FIXED, CANNOT BE MOVED):
+- Monday: Team Meeting 13:00-14:00 (type: "event", hard_fixed: true)
+- Tuesday: Agency Meeting 08:30-09:00 (type: "event", hard_fixed: true)
+
+REAL DAY EXAMPLE (for reference - match this level of granularity):
 06:00 Wake
 06:00–06:02 30 push-ups (2 min) - Fixed
 06:02–06:04 Brush my teeth - Fixed
@@ -218,8 +222,7 @@ DO NOT ignore these notes - they represent the user's current state and needs!
 06:55–07:00 Slice potatoes (5 min)
 07:00–07:30 Run (30 min) - Fixed
 07:30–07:40 Shower (10 min) - Fixed
-07:40–07:50 Finish cooking (done by 07:50) - Fixed
-07:50–08:00 Read (to 08:00) - Fixed
+07:40–08:00 Cooking (breakfast prep) (20 min) - Fixed
 08:00–08:10 Pack
 08:10–08:30 Commute to office
 08:30–09:00 Team stand-up ("Porada")
@@ -441,10 +444,20 @@ CRITICAL TASK RULES:
 - If there aren't enough tasks to fill work hours, leave time as "buffer" blocks or unscheduled
 - Task blocks MUST include the exact task_id from the list above
 
+⚠️ PS:DIGITAL (BUSINESS) TASK SCHEDULING CONSTRAINTS:
+- Tasks with project="PS:Digital" or tags containing "PS:Digital" CANNOT be scheduled before 08:30
+- Before 08:30: ONLY schedule personal projects/tasks (biz_or_personal="personal")
+- After 08:30: Both business and personal tasks can be scheduled
+- This ensures personal development time before work hours
+
 Generate optimal schedule as JSON array with:
 - Running (START 07:00 weekdays / 07:30 weekends, 30min) - type "ritual"
-- Shower (START 07:40 weekdays / 08:00 weekends, 10min) - type "ritual"
+- Shower (START 07:30 weekdays / 08:00 weekends, 10min) - type "ritual"
+- Cooking/Breakfast prep (07:40-08:00 weekdays) - type "ritual"
+- Fixed meetings: Monday Team Meeting (13:00-14:00), Tuesday Agency Meeting (08:30-09:00) - type "event"
 - ONLY tasks from the TASKS list above (with their exact task_id)
+  * Personal tasks can be scheduled anytime
+  * PS:Digital/business tasks ONLY after 08:30
 - Lunch (12:00-12:45 EXACTLY) - MUST specify meal: "[base] with [main]" e.g. "Rice with salmon" - type "meal"
 - Exercise time (gym/football/swimming per schedule) - type "ritual"
 - Dinner (simple: "Bread with ham", "Bread with eggs", or "Yogurt with cereals") - type "meal"
