@@ -247,7 +247,7 @@ export const BlockDetailDialog = ({ block, open, onOpenChange, onDelete }: Block
   const getTypeColor = (type: TimeBlock["type"]) => {
     const colors = {
       task: "bg-blue-500",
-      ritual: "bg-purple-500",
+      ritual: "bg-gray-500",
       event: "bg-green-500",
       meal: "bg-orange-500",
       break: "bg-gray-400",
