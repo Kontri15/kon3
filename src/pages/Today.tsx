@@ -37,7 +37,7 @@ const Today = () => {
         .gte('start_at', `${dateStr}T00:00:00`)
         .lt('start_at', `${dateStr}T23:59:59`)
         .order('start_at');
-      
+
       if (error) throw error;
       return data;
     },
@@ -47,25 +47,25 @@ const Today = () => {
     setIsPlanning(true);
     try {
       const { data, error } = await supabase.functions.invoke('plan-my-day', {
-        body: { 
+        body: {
           targetDate: selectedDate.toISOString(),
-          userNotes: planningNotes 
+          userNotes: planningNotes
         }
       });
-      
+
       if (error) {
         // Extract the actual error message from the edge function
         const errorMessage = error.message || error.toString();
         throw new Error(errorMessage);
       }
-      
+
       const dateStr = format(selectedDate, 'EEEE, MMM d');
-      
+
       toast({
         title: "Day planned!",
         description: `Created ${data.blocksCreated} time blocks for ${dateStr}.`,
       });
-      
+
       // Refresh blocks
       queryClient.invalidateQueries({ queryKey: ['blocks'] });
     } catch (error) {
@@ -73,7 +73,7 @@ const Today = () => {
       const errorMessage = error instanceof Error ? error.message : "Failed to plan your day";
       toast({
         title: "Planning failed",
-        description: errorMessage.includes("Insufficient AI credits") 
+        description: errorMessage.includes("Insufficient AI credits")
           ? "Not enough AI credits available. Please check your Lovable account."
           : errorMessage,
         variant: "destructive",
@@ -95,7 +95,7 @@ const Today = () => {
       if (error) throw error;
 
       queryClient.invalidateQueries({ queryKey: ['blocks'] });
-      
+
       const dateName = getDateLabel();
       toast({
         title: "Day cleared",
@@ -149,7 +149,7 @@ const Today = () => {
 
       // Refresh blocks
       queryClient.invalidateQueries({ queryKey: ['blocks'] });
-      
+
       toast({
         title: "Schedule updated",
         description: `Applied changes to ${newBlocks.length} blocks`,
@@ -166,7 +166,7 @@ const Today = () => {
 
   const isToday = format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
   const isTomorrow = format(selectedDate, 'yyyy-MM-dd') === format(addDays(new Date(), 1), 'yyyy-MM-dd');
-  
+
   const getDateLabel = () => {
     if (isToday) return "Today";
     if (isTomorrow) return "Tomorrow";
@@ -177,47 +177,48 @@ const Today = () => {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <Navigation />
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setCreateDialogOpen(true)}
-              variant="outline"
-              size="lg"
-              className="gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Block
-            </Button>
-            <Button 
-              onClick={handleClearDay}
-              variant="outline"
-              size="lg"
-              className="gap-2 text-destructive hover:text-destructive"
-            >
-              <Trash2 className="w-4 h-4" />
-              Clear Day
-            </Button>
-            <Button 
-              onClick={() => setIsChatOpen(!isChatOpen)}
-              variant="outline"
-              size="lg"
-              className="gap-2"
-            >
-              <MessageSquare className="w-4 h-4" />
-              Feedback
-            </Button>
-            <Button 
-              onClick={handlePlanDay} 
-              disabled={isPlanning}
-              size="lg"
-              className="gap-2"
-            >
-              <Sparkles className="w-4 h-4" />
-              {isPlanning ? "Planning..." : `Plan ${getDateLabel()}`}
-            </Button>
-          </div>
+          <Navigation>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setCreateDialogOpen(true)}
+                variant="ghost"
+                size="icon"
+                className="hover:bg-primary/10"
+                title="Add Block"
+              >
+                <Plus className="w-5 h-5" />
+              </Button>
+              <Button
+                onClick={handleClearDay}
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                title="Clear Day"
+              >
+                <Trash2 className="w-5 h-5" />
+              </Button>
+              <Button
+                onClick={() => setIsChatOpen(!isChatOpen)}
+                variant="ghost"
+                size="icon"
+                className={isChatOpen ? "bg-primary/10 text-primary" : "text-muted-foreground"}
+                title="Feedback"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </Button>
+              <Button
+                onClick={handlePlanDay}
+                disabled={isPlanning}
+                size="sm"
+                className="gap-2 ml-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                {isPlanning ? "Planning..." : "Plan Today"}
+              </Button>
+            </div>
+          </Navigation>
         </div>
-        
+
         {/* Date Navigation */}
         <div className="flex items-center justify-center gap-4 mb-6">
           <Button
@@ -255,12 +256,12 @@ const Today = () => {
             Provide context to help the AI plan your day better (recent workouts, meals, priorities, etc.)
           </p>
         </div>
-        
+
         <TimelineView date={selectedDate} />
-        
+
         <Collapsible open={isChatOpen} onOpenChange={setIsChatOpen} className="mt-6">
           <CollapsibleContent>
-            <PlanFeedbackChat 
+            <PlanFeedbackChat
               currentBlocks={currentBlocks}
               onApplyChanges={handleApplyChanges}
             />
