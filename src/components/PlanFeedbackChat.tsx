@@ -57,7 +57,24 @@ export const PlanFeedbackChat = ({ currentBlocks, onApplyChanges, edgeFunction =
         }
       });
 
+      console.log('Edge function response:', { data, error });
+
       if (error) throw error;
+
+      // VALIDATE response structure
+      if (!data) {
+        throw new Error('No data received from edge function');
+      }
+      if (!data.modifiedBlocks || !Array.isArray(data.modifiedBlocks)) {
+        console.error('Invalid response structure:', data);
+        throw new Error('Response missing modifiedBlocks array');
+      }
+      if (!data.explanation) {
+        console.error('Invalid response structure:', data);
+        throw new Error('Response missing explanation');
+      }
+
+      console.log(`Received ${data.modifiedBlocks.length} modified blocks`);
 
       const assistantMessage: Message = {
         role: 'assistant',
