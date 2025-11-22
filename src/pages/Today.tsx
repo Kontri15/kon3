@@ -144,23 +144,31 @@ const Today = () => {
 
   const handleApplyChanges = async (newBlocks: any[]) => {
     try {
+      console.log('Applying changes to blocks:', newBlocks.length);
+      
       if (!newBlocks || newBlocks.length === 0) {
         throw new Error("No blocks to apply");
       }
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('Current user:', user?.id);
       if (!user) throw new Error("Not authenticated");
 
       // Delete existing blocks for selected date
       const dateStr = selectedDate.toISOString().split('T')[0];
+      console.log('Deleting blocks for date:', dateStr);
+      
       const { error: deleteError } = await supabase
         .from('blocks')
         .delete()
         .gte('start_at', `${dateStr}T00:00:00`)
         .lt('start_at', `${dateStr}T23:59:59`);
 
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error('Delete error:', deleteError);
+        throw deleteError;
+      }
 
       // Prepare blocks for insertion - ensure all required fields are present
       const blocksToInsert = newBlocks.map(block => ({
@@ -171,12 +179,20 @@ const Today = () => {
         updated_at: undefined,
       }));
 
+      console.log('Inserting blocks:', blocksToInsert.length);
+      console.log('Sample block:', blocksToInsert[0]);
+
       // Insert new blocks
       const { error: insertError } = await supabase
         .from('blocks')
         .insert(blocksToInsert);
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        throw insertError;
+      }
+
+      console.log('Successfully inserted blocks');
 
       // Refresh blocks
       queryClient.invalidateQueries({ queryKey: ['blocks'] });

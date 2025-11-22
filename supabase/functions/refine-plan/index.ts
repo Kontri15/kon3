@@ -126,15 +126,17 @@ OUTPUT FORMAT (JSON only, no markdown):
 
   } catch (error) {
     console.error('Error in refine-plan:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
+    
     return new Response(
       JSON.stringify({ 
         error: error instanceof Error ? error.message : 'Unknown error',
         modifiedBlocks: [],
-        explanation: 'Sorry, I encountered an error processing your request.'
+        explanation: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+        status: 200  // Return 200 so the frontend gets the error message
       }
     );
   }
