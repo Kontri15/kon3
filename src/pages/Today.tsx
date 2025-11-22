@@ -6,10 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Sparkles, MessageSquare, Plus, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Sparkles, MessageSquare, Plus, ChevronLeft, ChevronRight, Trash2, MoreVertical } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { format, addDays } from "date-fns";
 
@@ -176,48 +182,38 @@ const Today = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <Navigation>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setCreateDialogOpen(true)}
-                variant="ghost"
-                size="icon"
-                className="hover:bg-primary/10"
-                title="Add Block"
-              >
-                <Plus className="w-5 h-5" />
+        <Navigation>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" title="More actions">
+                <MoreVertical className="w-5 h-5" />
               </Button>
-              <Button
-                onClick={handleClearDay}
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                title="Clear Day"
-              >
-                <Trash2 className="w-5 h-5" />
-              </Button>
-              <Button
-                onClick={() => setIsChatOpen(!isChatOpen)}
-                variant="ghost"
-                size="icon"
-                className={isChatOpen ? "bg-primary/10 text-primary" : "text-muted-foreground"}
-                title="Feedback"
-              >
-                <MessageSquare className="w-5 h-5" />
-              </Button>
-              <Button
-                onClick={handlePlanDay}
-                disabled={isPlanning}
-                size="sm"
-                className="gap-2 ml-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                {isPlanning ? "Planning..." : "Plan Today"}
-              </Button>
-            </div>
-          </Navigation>
-        </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setCreateDialogOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Block
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsChatOpen(!isChatOpen)}>
+                <MessageSquare className="w-4 h-4 mr-2" />
+                {isChatOpen ? "Hide" : "Show"} Feedback
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleClearDay} className="text-destructive">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Clear Day
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            onClick={handlePlanDay}
+            disabled={isPlanning}
+            size="sm"
+            className="gap-2"
+          >
+            <Sparkles className="w-4 h-4" />
+            {isPlanning ? "Planning..." : `Plan ${isToday ? "Today" : isTomorrow ? "Tomorrow" : "Day"}`}
+          </Button>
+        </Navigation>
 
         {/* Date Navigation */}
         <div className="flex items-center justify-center gap-4 mb-6">
