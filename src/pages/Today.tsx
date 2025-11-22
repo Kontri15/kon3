@@ -12,6 +12,7 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
@@ -31,6 +32,7 @@ const Today = () => {
   const [planningNotes, setPlanningNotes] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
 
   // Fetch blocks for selected date for chat feedback
   const { data: currentBlocks = [] } = useQuery({
@@ -185,8 +187,8 @@ const Today = () => {
         <Navigation>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" title="More actions">
-                <MoreVertical className="w-5 h-5" />
+              <Button variant="ghost" size="icon" title="More actions" className="h-8 w-8 md:h-10 md:w-10">
+                <MoreVertical className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -207,11 +209,11 @@ const Today = () => {
           <Button
             onClick={handlePlanDay}
             disabled={isPlanning}
-            size="sm"
-            className="gap-2"
+            size={isMobile ? "sm" : "sm"}
+            className="gap-1.5 md:gap-2 text-xs md:text-sm px-2 md:px-4"
           >
-            <Sparkles className="w-4 h-4" />
-            {isPlanning ? "Planning..." : `Plan ${isToday ? "Today" : isTomorrow ? "Tomorrow" : "Day"}`}
+            <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            {isPlanning ? "Planning..." : isMobile ? "Plan" : `Plan ${isToday ? "Today" : isTomorrow ? "Tomorrow" : "Day"}`}
           </Button>
         </Navigation>
 
