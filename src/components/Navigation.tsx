@@ -1,7 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Calendar, CheckSquare, Settings, BarChart3, Zap, CalendarRange } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { ReactNode } from "react";
 
 const navItems = [
@@ -21,22 +20,17 @@ export const Navigation = ({ children }: NavigationProps) => {
 
   return (
     <nav className="glass border border-border rounded-2xl p-2 mb-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         {/* Left: Logo */}
-        <div className="flex items-center gap-2 w-[200px]">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
             <Zap className="w-5 h-5 text-primary-foreground" />
           </div>
-          <div>
-            <h1 className="font-bold text-lg leading-none">ChronoPilot</h1>
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-secondary/20">
-              Build Mode
-            </Badge>
-          </div>
+          <h1 className="font-bold text-lg leading-none">ChronoPilot</h1>
         </div>
 
         {/* Center: Navigation Links */}
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-1 justify-center">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.to;
@@ -60,7 +54,7 @@ export const Navigation = ({ children }: NavigationProps) => {
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center justify-end gap-2 w-[200px]">
+        <div className="flex items-center gap-2">
           {children}
         </div>
       </div>
