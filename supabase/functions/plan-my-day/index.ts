@@ -121,9 +121,15 @@ Deno.serve(async (req) => {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
 
+    // Detect if planning for weekend
+    const isWeekendDay = planningDate.getDay() === 0 || planningDate.getDay() === 6;
+    
     // Fetch all required data (all optional - will work with empty DB)
     const [tasksRes, ritualsRes, eventsRes, profileRes, whoopRes, historyRes, recentBlocksRes] = await Promise.all([
-      supabase.from('tasks').select('*').eq('status', 'todo'),
+      // On weekends, only fetch personal tasks; on weekdays, fetch all tasks
+      isWeekendDay 
+        ? supabase.from('tasks').select('*').eq('status', 'todo').eq('biz_or_personal', 'personal')
+        : supabase.from('tasks').select('*').eq('status', 'todo'),
       supabase.from('rituals').select('*'),
       supabase.from('events').select('*').gte('start_at', new Date().toISOString()),
       supabase.from('profiles').select('*').single(),
@@ -160,6 +166,10 @@ Deno.serve(async (req) => {
 
     console.log(`Loaded: ${tasks.length} tasks, ${rituals.length} rituals, ${events.length} events, ${history.length} history entries`);
     
+    if (isWeekendDay) {
+      console.log(`🏖️ Weekend detected - filtered to ${tasks.length} personal tasks only (business tasks excluded)`);
+    }
+    
     // If no data exists, AI will create a balanced template day
     if (tasks.length === 0 && rituals.length === 0 && events.length === 0) {
       console.log('No tasks/rituals/events found - will generate template schedule');
@@ -168,6 +178,7 @@ Deno.serve(async (req) => {
     const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][planningDate.getDay()];
     const isWorkday = planningDate.getDay() >= 1 && planningDate.getDay() <= 5;
     const isFriday = planningDate.getDay() === 5;
+    const isWeekend = planningDate.getDay() === 0 || planningDate.getDay() === 6;
 
     // Calculate wake time from bedtime and sleep target
     const bedtimeHours = parseInt(profile.bedtime?.split(':')[0] || '22');
@@ -210,6 +221,15 @@ If the user specifies:
 - Energy levels or constraints → ADJUST SCHEDULE ACCORDINGLY
 
 USER NOTES HAVE ABSOLUTE PRIORITY. If there's a conflict between user notes and any other rule (rotation, cycle, history), the USER NOTES WIN.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+` : ''}${isWeekendDay ? `🏖️ WEEKEND MODE - PERSONAL TASKS ONLY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ CRITICAL: Today is ${dayOfWeek} (WEEKEND).
+- ONLY schedule PERSONAL tasks (NO business/work tasks like "PS Digital" tasks)
+- If there are not enough personal tasks to fill the day, that's OK - leave gaps or use "Free time" blocks
+- DO NOT try to fill the day with business tasks just because you have time available
+- Focus on rest, personal projects, hobbies, and personal errands only
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ` : ''}🔒 FIXED RECURRING MEETINGS (HARD-FIXED, CANNOT BE MOVED):
