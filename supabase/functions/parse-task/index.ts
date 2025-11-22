@@ -22,8 +22,8 @@ Deno.serve(async (req) => {
 
     console.log('Parsing task input:', input);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
+    if (!OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY not configured');
 
     const systemPrompt = `You are a task parser for ChronoPilot. Extract structured task information from plain English input.
 
@@ -68,14 +68,15 @@ Output: {
   "tags": ["meeting", "communication"]
 }`;
 
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const aiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://chronopilot.lovable.app',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-3-pro-preview',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Parse this task: "${input}"` }
