@@ -19,9 +19,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Sparkles, MessageSquare, Plus, ChevronLeft, ChevronRight, Trash2, MoreVertical, Calendar, Zap, Target } from "lucide-react";
+import { Sparkles, MessageSquare, Plus, ChevronLeft, ChevronRight, Trash2, MoreVertical, Calendar, Zap, Target, ListTodo } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { format, addDays } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 const Today = () => {
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -38,6 +39,7 @@ const Today = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   // Fetch blocks for selected date for chat feedback
   const { data: currentBlocks = [] } = useQuery({
@@ -231,6 +233,10 @@ const Today = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => navigate('/tasks')}>
+                <ListTodo className="w-4 h-4 mr-2" />
+                Tasks
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setCreateDialogOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add Block
