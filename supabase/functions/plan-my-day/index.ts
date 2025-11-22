@@ -197,20 +197,20 @@ Deno.serve(async (req) => {
     const systemPrompt = `You are ChronoPilot's scheduling engine. Plan a personalized day for TOMORROW ${planningDate.toISOString().split('T')[0]} (${dayOfWeek}) in Europe/Bratislava timezone.
 
 ${userNotes ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 CRITICAL USER CONTEXT - MUST BE PRIORITIZED IN PLANNING:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 CRITICAL USER CONTEXT - ABSOLUTE PRIORITY - OVERRIDES ALL OTHER RULES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${userNotes}
 
-⚠️ MANDATORY: These user notes are CRITICAL CONTEXT and must directly influence:
-1. Gym cycle planning (adjust based on yesterday's workout and user's workout notes)
-2. Meal rotation (use ingredients mentioned by user, avoid recently eaten meals)
-3. Task priorities (respect mentioned deadlines and urgency)
-4. Energy levels (if user mentions being tired, schedule lighter tasks)
-5. Time constraints (if user mentions current time, adjust schedule accordingly)
+⚠️ MANDATORY - THIS OVERRIDES EVERYTHING INCLUDING ROTATION RULES:
+If the user specifies:
+- A meal (e.g., "lunch is potatoes with chickpeas") → USE EXACTLY THAT, ignore rotation rules
+- A workout type (e.g., "today is leg day") → USE EXACTLY THAT, ignore cycle tracking
+- Task priorities or timing → RESPECT EXACTLY AS STATED
+- Energy levels or constraints → ADJUST SCHEDULE ACCORDINGLY
 
-DO NOT ignore these notes - they represent the user's current state and needs!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+USER NOTES HAVE ABSOLUTE PRIORITY. If there's a conflict between user notes and any other rule (rotation, cycle, history), the USER NOTES WIN.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ` : ''}🔒 FIXED RECURRING MEETINGS (HARD-FIXED, CANNOT BE MOVED):
 - Monday: Team Meeting 13:00-14:00 (type: "event", hard_fixed: true)
