@@ -356,8 +356,11 @@ SCHEDULING RULES (CRITICAL - USE EXACT TIMES):
 4. WORK HOURS ALLOCATION (${isWorkday ? '08:30-16:00' : 'N/A - weekend'}):
    - Work hours (Mon-Fri 08:30-16:00): ONLY schedule PS:Digital work tasks (MagicStyle, MediaToolKit, etc.)
    - CRITICAL: During 08:30-16:00 schedule ONLY tasks with biz_or_personal="biz" (PS:Digital work)
+   - WEEKENDS (Saturday-Sunday): ONLY schedule personal tasks (biz_or_personal="personal")
+     * NEVER schedule PS:Digital tasks on weekends - NO EXCEPTIONS
+     * Focus on: TatryStay, A+ Memory, ChronoPilot, Archnes, learning, personal projects
    - Personal projects (TatryStay, A+ Memory, Chronopilot/AI Planning, Archnes): schedule ONLY on weekends or before/after work hours (before 08:30 or after 16:00)
-   - Exception: PS:Digital tasks can spill outside work hours ONLY if they have highest priority AND tight deadline
+   - Exception: PS:Digital tasks can spill outside work hours ONLY if they have highest priority AND tight deadline (Mon-Fri only)
    - Personal projects NEVER go into work hours, even if high priority
    - Friday: PS:News meeting 08:30-09:00 is HARD-FIXED, then regular PS:Digital work until 16:00
 5. Score tasks: (impact * 3) + (priority * 2) + (urgency_score) - (energy_mismatch_penalty)
