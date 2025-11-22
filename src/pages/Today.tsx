@@ -2,9 +2,12 @@ import { Navigation } from "@/components/Navigation";
 import { TimelineView } from "@/components/TimelineView";
 import { PlanFeedbackChat } from "@/components/PlanFeedbackChat";
 import { BlockCreateDialog } from "@/components/BlockCreateDialog";
+import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   DropdownMenu, 
@@ -16,7 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Sparkles, MessageSquare, Plus, ChevronLeft, ChevronRight, Trash2, MoreVertical } from "lucide-react";
+import { Sparkles, MessageSquare, Plus, ChevronLeft, ChevronRight, Trash2, MoreVertical, Calendar, Zap, Target } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { format, addDays } from "date-fns";
 
@@ -29,6 +32,8 @@ const Today = () => {
   const [isPlanning, setIsPlanning] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [taskDetailOpen, setTaskDetailOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
   const [planningNotes, setPlanningNotes] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -46,6 +51,22 @@ const Today = () => {
         .lt('start_at', `${dateStr}T23:59:59`)
         .order('start_at');
 
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch tasks
+  const { data: tasks = [] } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('status', 'todo')
+        .order('priority', { ascending: false })
+        .limit(5);
+      
       if (error) throw error;
       return data;
     },
@@ -181,6 +202,24 @@ const Today = () => {
     return format(selectedDate, 'EEEE, MMM d');
   };
 
+  const getPriorityColor = (priority: number) => {
+    if (priority >= 4) return "bg-destructive/20 text-destructive border-destructive/30";
+    if (priority >= 3) return "bg-warning/20 text-warning border-warning/30";
+    return "bg-info/20 text-info border-info/30";
+  };
+
+  const getTaskTypeColor = (bizType?: string) => {
+    if (bizType === "biz") {
+      return "border-l-4 border-l-task-business bg-task-business/10";
+    }
+    return "border-l-4 border-l-task-personal bg-task-personal/10";
+  };
+
+  const handleTaskClick = (task: any) => {
+    setSelectedTask(task);
+    setTaskDetailOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
@@ -255,6 +294,56 @@ const Today = () => {
           </p>
         </div>
 
+        {/* Tasks Section */}
+        {tasks.length > 0 && (
+          <div className="mb-6 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Pending Tasks</h3>
+              <Button variant="ghost" size="sm" onClick={() => window.location.href = '/tasks'}>
+                View All
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {tasks.map((task) => (
+                <Card 
+                  key={task.id} 
+                  className={`glass border-border p-4 hover:border-primary/30 transition-all cursor-pointer ${getTaskTypeColor(task.biz_or_personal)}`}
+                  onClick={() => handleTaskClick(task)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium truncate">{task.title}</h4>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                        {task.due_at && (
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(task.due_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </div>
+                        )}
+                        {task.est_min && (
+                          <div className="flex items-center gap-1">
+                            <Zap className="w-3 h-3" />
+                            {task.est_min}m
+                          </div>
+                        )}
+                        {task.impact && (
+                          <div className="flex items-center gap-1">
+                            <Target className="w-3 h-3" />
+                            {task.impact}/5
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <Badge className={getPriorityColor(task.priority)} variant="outline">
+                      P{task.priority}
+                    </Badge>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
         <TimelineView date={selectedDate} />
 
         <Collapsible open={isChatOpen} onOpenChange={setIsChatOpen} className="mt-6">
@@ -269,6 +358,11 @@ const Today = () => {
         <BlockCreateDialog
           open={createDialogOpen}
           onOpenChange={setCreateDialogOpen}
+        />
+        <TaskDetailDialog
+          task={selectedTask}
+          open={taskDetailOpen}
+          onOpenChange={setTaskDetailOpen}
         />
       </div>
     </div>
