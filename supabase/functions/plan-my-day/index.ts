@@ -95,6 +95,13 @@ Deno.serve(async (req) => {
     const targetDateStr = body.targetDate;
     const userNotes = body.userNotes || '';
     
+    // Log user notes for debugging
+    if (userNotes) {
+      console.log('📝 User planning notes received:', userNotes);
+    } else {
+      console.log('📝 No user planning notes provided');
+    }
+    
     const today = new Date();
     let planningDate: Date;
     
