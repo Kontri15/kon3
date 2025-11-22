@@ -88,10 +88,30 @@ OUTPUT FORMAT (JSON only, no markdown):
     
     let parsedResponse;
     try {
-      parsedResponse = JSON.parse(aiContent);
+      // Trim whitespace and try to extract JSON if wrapped in markdown
+      let jsonContent = aiContent.trim();
+      
+      // Remove markdown code blocks if present
+      if (jsonContent.startsWith('```json')) {
+        jsonContent = jsonContent.replace(/^```json\s*\n?/, '').replace(/\n?```\s*$/, '');
+      } else if (jsonContent.startsWith('```')) {
+        jsonContent = jsonContent.replace(/^```\s*\n?/, '').replace(/\n?```\s*$/, '');
+      }
+      
+      parsedResponse = JSON.parse(jsonContent);
+      
+      // Validate response structure
+      if (!parsedResponse.modifiedBlocks || !Array.isArray(parsedResponse.modifiedBlocks)) {
+        throw new Error('Response missing modifiedBlocks array');
+      }
+      if (!parsedResponse.explanation) {
+        throw new Error('Response missing explanation field');
+      }
+      
     } catch (parseError) {
-      console.error('Failed to parse AI response:', aiContent);
-      throw new Error('Invalid AI response format');
+      console.error('Failed to parse AI response:', parseError);
+      console.error('AI content (first 500 chars):', aiContent.substring(0, 500));
+      throw new Error(`Invalid AI response format: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
     }
 
     console.info(`Modified blocks count: ${parsedResponse.modifiedBlocks?.length || 0}`);
