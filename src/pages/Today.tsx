@@ -3,6 +3,7 @@ import { TimelineView } from "@/components/TimelineView";
 import { PlanFeedbackChat } from "@/components/PlanFeedbackChat";
 import { BlockCreateDialog } from "@/components/BlockCreateDialog";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
+import { PlanningOptions } from "@/components/PlanningOptions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,10 @@ const Today = () => {
   const [taskDetailOpen, setTaskDetailOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [planningNotes, setPlanningNotes] = useState("");
+  // Pre-planning options
+  const [lunchMeal, setLunchMeal] = useState("");
+  const [dinnerMeal, setDinnerMeal] = useState("");
+  const [workoutType, setWorkoutType] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -77,24 +82,34 @@ const Today = () => {
   const handlePlanDay = async () => {
     setIsPlanning(true);
     try {
-      const { data, error } = await supabase.functions.invoke('plan-my-day', {
+      // Determine which function to call based on notes
+      const hasNotes = planningNotes.trim().length > 0;
+      const functionName = hasNotes ? 'plan-my-day' : 'plan-my-day-code';
+      
+      console.log(`📅 Planning with ${functionName}, hasNotes: ${hasNotes}`);
+      
+      const { data, error } = await supabase.functions.invoke(functionName, {
         body: {
           targetDate: selectedDate.toISOString(),
-          userNotes: planningNotes
+          userNotes: planningNotes,
+          // Pass pre-selected options for code-based planning
+          lunchMeal: lunchMeal === 'auto' ? '' : lunchMeal,
+          dinnerMeal: dinnerMeal === 'auto' ? '' : dinnerMeal,
+          workoutType: workoutType === 'auto' ? '' : workoutType,
         }
       });
 
       if (error) {
-        // Extract the actual error message from the edge function
         const errorMessage = error.message || error.toString();
         throw new Error(errorMessage);
       }
 
       const dateStr = format(selectedDate, 'EEEE, MMM d');
+      const planType = hasNotes ? 'AI' : 'code';
 
       toast({
         title: "Day planned!",
-        description: `Created ${data.blocksCreated} time blocks for ${dateStr}.`,
+        description: `Created ${data.blocksCreated} time blocks for ${dateStr} (${planType}-based).`,
       });
 
       // Refresh blocks
@@ -299,20 +314,32 @@ const Today = () => {
           </Button>
         </div>
 
+        {/* Planning Options */}
+        <div className="mb-4">
+          <PlanningOptions
+            lunchMeal={lunchMeal}
+            dinnerMeal={dinnerMeal}
+            workoutType={workoutType}
+            onLunchChange={setLunchMeal}
+            onDinnerChange={setDinnerMeal}
+            onWorkoutChange={setWorkoutType}
+          />
+        </div>
+
         {/* Planning Notes */}
         <div className="mb-6 space-y-2">
           <Label htmlFor="planning-notes" className="text-sm font-medium">
-            Planning Notes (optional)
+            Planning Notes (triggers AI-based planning)
           </Label>
           <Textarea
             id="planning-notes"
-            placeholder="e.g., Had push day yesterday, ate bread with ham for dinner, need to focus on urgent MagicStyle tasks..."
+            placeholder="Leave empty for fast code-based planning, or add notes to use AI (e.g., 'Had push day yesterday, feeling tired today...')"
             value={planningNotes}
             onChange={(e) => setPlanningNotes(e.target.value)}
             className="min-h-[80px] resize-none"
           />
           <p className="text-xs text-muted-foreground">
-            Provide context to help the AI plan your day better (recent workouts, meals, priorities, etc.)
+            {planningNotes.trim() ? "🤖 AI-based planning will be used (slower, costs credits)" : "⚡ Code-based planning (instant, free)"}
           </p>
         </div>
 
