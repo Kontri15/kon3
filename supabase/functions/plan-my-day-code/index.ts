@@ -304,7 +304,8 @@ Deno.serve(async (req) => {
     // === EVENING ROUTINE ===
     addBlock('Walk', 1175, 1200, 'ritual'); // 19:35-20:00
     addBlock('Evening reading/work', 1200, 1260, 'buffer'); // 20:00-21:00
-    addBlock('Free time', 1260, 1290, 'buffer'); // 21:00-21:30
+    addBlock('Free time', 1260, 1280, 'buffer'); // 21:00-21:20
+    addBlock('Spinal rotation exercises', 1280, 1290, 'ritual'); // 21:20-21:30
     addBlock('Yoga', 1290, 1300, 'ritual'); // 21:30-21:40
     addBlock('Meditation', 1300, 1310, 'ritual'); // 21:40-21:50
     addBlock('Brush teeth', 1310, 1313, 'ritual'); // 21:50-21:53
