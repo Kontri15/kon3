@@ -222,8 +222,10 @@ Deno.serve(async (req) => {
     addBlock('Get dressed', 364, 366, 'ritual');
     addBlock('Weigh self', 366, 368, 'ritual');
     
-    // Build mode (06:10-07:00)
-    addBlock('Build mode - Deep work', 370, 420, 'task', { description: 'Morning deep work session' });
+    // Build mode (06:10-07:30) - only on weekdays
+    if (!isWeekend) {
+      addBlock('Build mode - Deep work', 370, 420, 'task', { description: 'Morning deep work session' });
+    }
     
     // Run + Shower (07:00-07:40)
     const runStart = isWeekend ? 450 : 420; // 07:30 weekend, 07:00 weekday
@@ -297,17 +299,41 @@ Deno.serve(async (req) => {
       // Commute home (16:00-16:30)
       addBlock('Commute home', 960, 990, 'commute');
     } else {
-      // Weekend: schedule personal tasks throughout the day
+      // Weekend: schedule personal tasks during deep work (06:10-07:30) and throughout the day
       const personalTasks = tasks.filter(t => t.biz_or_personal === 'personal');
-      let currentTime = 510; // 08:30
+      
+      // Deep work session 06:10-07:30 (before run) - fill with actual tasks
+      let deepWorkTime = 370; // 06:10
+      const deepWorkEnd = 450; // 07:30
       
       for (const task of personalTasks) {
+        const duration = task.est_min || task.min_block_min || 30;
+        if (deepWorkTime + duration <= deepWorkEnd && !hasConflict(blocks, deepWorkTime, deepWorkTime + duration, planningDate)) {
+          addBlock(task.title, deepWorkTime, deepWorkTime + duration, 'task', { 
+            task_id: task.id, 
+            description: task.description 
+          });
+          deepWorkTime += duration + 5;
+        }
+      }
+      
+      // Get remaining tasks (those not scheduled in deep work)
+      const scheduledTaskIds = blocks.filter(b => b.task_id).map(b => b.task_id);
+      const remainingTasks = personalTasks.filter(t => !scheduledTaskIds.includes(t.id));
+      
+      // Continue with remaining tasks after shower (08:10 onwards)
+      let currentTime = 490; // 08:10
+      
+      for (const task of remainingTasks) {
         const duration = task.est_min || task.min_block_min || 30;
         // Skip lunch time
         if (currentTime >= 720 && currentTime < 765) currentTime = 765;
         
         if (currentTime + duration <= 1020 && !hasConflict(blocks, currentTime, currentTime + duration, planningDate)) {
-          addBlock(task.title, currentTime, currentTime + duration, 'task', { task_id: task.id, description: task.description });
+          addBlock(task.title, currentTime, currentTime + duration, 'task', { 
+            task_id: task.id, 
+            description: task.description 
+          });
           currentTime += duration + 10;
         }
       }
@@ -343,7 +369,7 @@ Deno.serve(async (req) => {
     addBlock('Meditation', 1300, 1310, 'ritual'); // 21:40-21:50
     addBlock('Brush teeth', 1310, 1313, 'ritual'); // 21:50-21:53
     addBlock('Wind down', 1313, 1320, 'buffer'); // 21:53-22:00
-    addBlock('Sleep', 1320, 1680, 'sleep'); // 22:00-04:00 (next day shown as 28:00)
+    addBlock('Sleep', 1320, 1800, 'sleep'); // 22:00-06:00 (8 hours)
 
     // Sort blocks by start time
     blocks.sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
