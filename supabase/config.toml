@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.plan-my-day]
 verify_jwt = false
 
+[functions.plan-my-day-code]
+verify_jwt = false
+
 [functions.plan-my-week]
 verify_jwt = false
 
