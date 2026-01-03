@@ -63,10 +63,43 @@ function parseTime(timeStr: string): number {
   return h * 60 + m;
 }
 
-// Helper: Format minutes to ISO datetime for given date
+// Helper: Get timezone offset for Europe/Bratislava (CET/CEST)
+function getBratislavaOffset(date: Date): number {
+  // CET (Central European Time) = UTC+1
+  // CEST (Central European Summer Time) = UTC+2
+  // DST in EU: last Sunday of March to last Sunday of October
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
+  
+  // Find last Sunday of March
+  const marchLast = new Date(year, 2, 31);
+  const marchLastSunday = 31 - marchLast.getDay();
+  
+  // Find last Sunday of October
+  const octLast = new Date(year, 9, 31);
+  const octLastSunday = 31 - octLast.getDay();
+  
+  // Check if date is in DST period
+  const isDST = (month > 2 && month < 9) || 
+    (month === 2 && day >= marchLastSunday) ||
+    (month === 9 && day < octLastSunday);
+  
+  return isDST ? 2 : 1; // +2 for CEST, +1 for CET
+}
+
+// Helper: Format minutes to ISO datetime for given date (in Bratislava timezone)
 function minutesToIso(date: Date, minutes: number): string {
+  const offset = getBratislavaOffset(date);
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  
+  // Subtract offset to get UTC time
+  const utcHours = hours - offset;
+  
   const d = new Date(date);
-  d.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+  d.setUTCHours(utcHours, mins, 0, 0);
+  
   return d.toISOString();
 }
 
