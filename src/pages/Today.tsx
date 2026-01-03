@@ -16,6 +16,17 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +35,6 @@ import { Sparkles, MessageSquare, Plus, ChevronLeft, ChevronRight, Trash2, MoreV
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { format, addDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
-
 const Today = () => {
   const [selectedDate, setSelectedDate] = useState(() => {
     const tomorrow = new Date();
@@ -282,6 +292,33 @@ const Today = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-destructive border-destructive/50 hover:bg-destructive/10 text-xs md:text-sm px-2 md:px-3"
+                disabled={!currentBlocks || currentBlocks.length === 0}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {!isMobile && "Clear"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear all blocks for {getDateLabel()}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will remove {currentBlocks?.length || 0} blocks from your schedule. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleClearDay} className="bg-destructive hover:bg-destructive/90">
+                  Clear Day
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button
             onClick={handlePlanDay}
             disabled={isPlanning}
